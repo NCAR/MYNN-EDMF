@@ -420,10 +420,10 @@ CONTAINS
              sh1                , sm1               , kh1               , &
              km1                ,                                         &
              !smoke variables
-             nchem              , kdvel             , ndvel             , &
-             chem               , vdep              , frp               , &
+             nchem              , ndvel             ,                     &
+             chem1              , vdep              , frp               , &
              emis_ant_no        , mix_chem,enh_mix  , rrfs_sd           , &
-             smoke_dbg          ,                                         &
+             smoke_dbg          , settle1           ,                     &
              !generic scalar array
              scalars            , nscalars          ,                     &
              !higher-order moments
@@ -546,8 +546,9 @@ CONTAINS
        edmf_u1,edmf_v1,edmf_qv1
  
 !smoke/chemical arrays
- integer, intent(in) ::   nchem, kdvel, ndvel
- real(kind_phys), dimension(kts:kte,nchem), intent(inout) :: chem
+ integer, intent(in) ::   nchem, ndvel
+ real(kind_phys), dimension(kts:kte,nchem), intent(inout) :: chem1
+ real(kind_phys), dimension(kts:kte,nchem), intent(in   ) :: settle1
  real(kind_phys), dimension(ndvel), intent(in)    :: vdep
  real(kind_phys),                   intent(in)    :: frp,emis_ant_no
  real(kind_phys), dimension(kts:kte+1,nchem)      :: s_awchem1
@@ -1025,7 +1026,7 @@ CONTAINS
             &det_thl1,det_sqv1,det_sqc1,              &
             &det_u1,det_v1,                           &
             ! chem/smoke mixing
-            &nchem,chem,s_awchem1,                    &
+            &nchem,chem1,s_awchem1,                   &
             &mix_chem,                                &
             &nscalars,scalars,s_awscalars1,           &
             &qc_bl1,cldfra_bl1,                       &
@@ -1189,8 +1190,8 @@ CONTAINS
        if ( rrfs_sd ) then 
           call mynn_mix_chem(kts,kte,i,                  &
                &delt, dz1, pblh,                         &
-               &nchem, kdvel, ndvel,                     &
-               &chem, vdep,                              &
+               &nchem, ndvel,                            &
+               &chem1, vdep, settle1,                    &
                &rho1, flt,                               &
                &tcd1, qcd1,                              &
                &dfh1,                                    &
@@ -1202,8 +1203,8 @@ CONTAINS
        else
           call mynn_mix_chem(kts,kte,i,                  &
                &delt, dz1, pblh,                         &
-               &nchem, kdvel, ndvel,                     &
-               &chem, vdep,                              &
+               &nchem, ndvel,                            &
+               &chem1, vdep, settle1,                    &
                &rho1, flt,                               &
                &tcd1, qcd1,                              &
                &dfh1,                                    &
@@ -1215,7 +1216,7 @@ CONTAINS
        endif
        do ic = 1,nchem
           do k = kts,kte
-             chem(k,ic) = max(1.e-12, chem(k,ic))
+             chem1(k,ic) = max(1.e-12, chem1(k,ic))
           enddo
        enddo
     endif
@@ -5767,8 +5768,8 @@ ENDIF
 
 SUBROUTINE mynn_mix_chem(kts,kte,i,     &
      delt,dz,pblh,                      &
-     nchem, kdvel, ndvel,               &
-     chem1, vd1,                        &
+     nchem, ndvel,                      &
+     chem1, vd1, settle1,               &
      rho,                               &
      flt, tcd, qcd,                     &
      dfh,                               &
@@ -5783,9 +5784,10 @@ real(kind_phys), dimension(kts:kte), intent(in) :: dfh,dz,tcd,qcd
 real(kind_phys), dimension(kts:kte), intent(in) :: rho
 real(kind_phys), intent(in)    :: flt
 real(kind_phys), intent(in)    :: delt,pblh
-integer, intent(in) :: nchem, kdvel, ndvel
+integer, intent(in) :: nchem, ndvel
 real(kind_phys), dimension( kts:kte+1), intent(in) :: s_aw1
 real(kind_phys), dimension( kts:kte, nchem ), intent(inout) :: chem1
+real(kind_phys), dimension( kts:kte, nchem ), intent(in) :: settle1
 real(kind_phys), dimension( kts:kte+1,nchem), intent(in) :: s_awchem1
 real(kind_phys), dimension( ndvel ), intent(in) :: vd1
 real(kind_phys), intent(in) :: emis_ant_no,frp
@@ -5916,7 +5918,7 @@ DO ic = 1,nchem
    CALL tridiag3(kte,a,b,c,d,x)
 
    DO k=kts,kte
-      chem1(k,ic)=x(k)
+      chem1(k,ic)=x(k) + settle1(k,ic)
    ENDDO
 
 ENDDO

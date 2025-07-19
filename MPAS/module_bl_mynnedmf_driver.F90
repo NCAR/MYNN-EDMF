@@ -51,10 +51,7 @@
                   bl_mynn_edmf_tke  , bl_mynn_output    , bl_mynn_mixscalars , bl_mynn_mixaerosols, &
                   bl_mynn_mixnumcon , bl_mynn_cloudmix  , bl_mynn_mixqt      , bl_mynn_ess        , &
                   errmsg            , errflg                                                        &
-#if(WRF_CHEM == 1)
-                 ,mix_chem   , nchem        , kdvel       , ndvel        , chem3d        , vd3d   , &
-                  frp_mean   , emis_ant_no                                                          &
-#endif
+                 ,mix_chem, nchem, ndvel, chem3d, settle3d, vd3d, frp_mean     , emis_ant_no        &
                )
 
 !=================================================================================================================
@@ -234,34 +231,25 @@
     qbuoy,       &!
     qdiss         !
 
-#if(WRF_CHEM == 1)
 !--- input arguments for PBL and free-tropospheric mixing of chemical species:
  logical,intent(in):: mix_chem
- integer,intent(in):: kdvel,nchem,ndvel
+ integer,intent(in):: nchem,ndvel
 
- real(kind=kind_phys),intent(in),dimension(ims:ime,jms:jme):: frp_mean,ems_ant_no
- real(kind=kind_phys),intent(in),dimension(ims:ime,kdvel,jms:jme,ndvel):: vd3d
- real(kind=kind_phys),intent(inout),dimension(ims:ime,kms:kme,jms:jme,nchem):: chem3
+ real(kind=kind_phys),intent(in),dimension(ims:ime,jms:jme),optional:: frp_mean,emis_ant_no
+ real(kind=kind_phys),intent(in),dimension(ims:ime,jms:jme,ndvel),optional:: vd3d
+ real(kind=kind_phys),intent(inout),dimension(ims:ime,kms:kme,jms:jme,nchem),optional:: chem3d,settle3d
  logical, parameter :: &
     rrfs_sd    =.false.,  &
     smoke_dbg  =.false.,  &
     enh_mix    =.false.
-#else
- logical, parameter :: &
-    mix_chem   =.false.,  &
-    enh_mix    =.false.,  &
-    rrfs_sd    =.false.,  &
-    smoke_dbg  =.false.
- integer, parameter :: nchem=2, ndvel=2, kdvel=1, num_vert_mix = 1
-#endif
  real(kind=kind_phys):: frp1,emisant_no1
- real(kind=kind_phys),dimension(kdvel,ndvel):: vd1
- real(kind=kind_phys),dimension(kts:kte,nchem):: chem1
+ real(kind=kind_phys),dimension(ndvel):: vd1
+ real(kind=kind_phys),dimension(kts:kte,nchem):: chem1,settle1
 !generic scalar array support
  integer, parameter :: nscalars=1
  real(kind=kind_phys),dimension(kts:kte,nscalars):: scalars
  
- integer:: i,k,j
+ integer:: i,k,j,ic
 
  integer:: dheat_opt
  integer:: kpbl1
@@ -443,25 +431,26 @@
        sm1(k)     = sm3d(i,k,j)
     enddo
 
-#if(WRF_CHEM == 1)
-    do ic = 1,nchem
-       do k = kts,kte
-          chem1(k,ic) = chem3d(i,k,j,ic)
+    if(present(chem3d).and. present(settle3d) .and. present(vd3d) .and. &
+       present(frp_mean) .and. present(emis_ant_no)) then
+       do ic = 1,nchem
+         do k = kts,kte
+            chem1(k,ic)   = chem3d(i,k,j,ic)
+            settle1(k,ic) = settle3d(i,k,j,ic)
+         enddo
        enddo
-    enddo
-    do ic = 1,ndvel
-       do k = 1,kdvel
-          vd1(k,ic) = vd3d(i,k,j,ic)
+       do ic = 1,ndvel
+          vd1(ic) = vd3d(i,j,ic)
        enddo
-    enddo
-    frp1        = frp_mean(i,j)
-    emisant_no1 = emis_ant_no(i,j)
-#else
-    chem1       = 0.0
-    vd1         = 0.0
-    frp1        = 0.0
-    emisant_no1 = 0.0
-#endif
+       frp1        = frp_mean(i,j)
+       emisant_no1 = emis_ant_no(i,j)
+    else
+       chem1       = 0._kind_phys
+       settle1     = 0._kind_phys
+       vd1         = 0._kind_phys
+       frp1        = 0._kind_phys
+       emisant_no1 = 0._kind_phys
+    endif
     scalars     = 0.0
 
     do k = kts,kte
@@ -512,12 +501,10 @@
             flag_ozone      = f_qoz         , flag_qnc    = f_nc          , flag_qni    = f_ni         , &
             flag_qnwfa      = f_nwfa        , flag_qnifa  = f_nifa        , flag_qnbca  = f_nbca       , &
             pattern_spp_pbl1= pattern_spp1  ,                                                            &
-!#if(WRF_CHEM == 1)
             mix_chem        = mix_chem      , enh_mix     = enh_mix       , rrfs_sd     = rrfs_sd      , &
-            smoke_dbg       = smoke_dbg     , nchem       = nchem         , kdvel       = kdvel        , &
-            ndvel           = ndvel         , chem        = chem1         , emis_ant_no = emisant_no1  , &
-            frp             = frp1          , vdep        = vd1                                        , &
-!#endif
+            smoke_dbg       = smoke_dbg     , nchem       = nchem         ,                              &
+            ndvel           = ndvel         , chem1       = chem1         , emis_ant_no = emisant_no1  , &
+            frp             = frp1          , vdep        = vd1           , settle1     = settle1      , &
             nscalars        = nscalars      , scalars     = scalars       ,                              &
             bl_mynn_tkeadvect  = bl_mynn_tkeadvect    , &
             tke_budget         = bl_mynn_tkebudget    , &
@@ -653,15 +640,13 @@
        enddo
     endif
 
-#if (WRF_CHEM == 1)
-    if (mix_chem) then
+    if (mix_chem .and. present(chem3d)) then
        do ic = 1,nchem
           do k = kts,kte
              chem3d(i,k,j,ic) = max(1.e-12, chem1(k,ic))
           enddo
        enddo
     endif
-#endif
 
  enddo !i
  enddo !j
