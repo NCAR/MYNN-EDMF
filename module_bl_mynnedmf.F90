@@ -456,7 +456,7 @@ CONTAINS
              bl_mynn_edmf       , bl_mynn_edmf_mom  , bl_mynn_edmf_tke  , &
              bl_mynn_mixscalars , bl_mynn_mixaerosols,bl_mynn_mixnumcon , &
              bl_mynn_output     , bl_mynn_cloudmix  , bl_mynn_mixqt     , &
-             bl_mynn_edmf_dd    , bl_mynn_mss       ,                     &
+             bl_mynn_edmf_dd    , bl_mynn_ess       ,                     &
              !3d emdf output
              edmf_a1            , edmf_w1           , edmf_qt1          , &
              edmf_thl1          , edmf_ent1         , edmf_qc1          , &
@@ -496,7 +496,7 @@ CONTAINS
  integer, intent(in) :: bl_mynn_output
  integer, intent(in) :: bl_mynn_cloudmix
  integer, intent(in) :: bl_mynn_mixqt
- integer, intent(in) :: bl_mynn_mss
+ integer, intent(in) :: bl_mynn_ess
  integer, intent(in) :: icloud_bl
  integer, intent(in) :: sf_urban_physics ! BEP Changes
  real(kind_phys), intent(in) :: closure
@@ -796,7 +796,7 @@ CONTAINS
             &tsq1, qsq1, cov1,              &
             &Psig_bl, cldfra_bl1,           &
             &bl_mynn_mixlength,             &
-            &bl_mynn_mss,                   &
+            &bl_mynn_ess,                   &
             &edmf_w1,edmf_a1,               &
             &edmf_w_dd1,edmf_a_dd1,         &
             &INITIALIZE_QKE,                &
@@ -1127,7 +1127,7 @@ CONTAINS
             &tke_budget,                                 &
             &Psig_bl,Psig_shcu,                          &
             &cldfra_bl1,bl_mynn_mixlength,               &
-            &bl_mynn_mss,                                &
+            &bl_mynn_ess,                                &
             &edmf_w1,edmf_a1,                            &
             &edmf_w_dd1,edmf_a_dd1,                      &
             &TKEprod_dn,TKEprod_up,                      &
@@ -1403,7 +1403,7 @@ CONTAINS
        &            Qke, Tsq, Qsq, Cov,                       &
        &            Psig_bl, cldfra_bl1,                      &
        &            bl_mynn_mixlength,                        &
-       &            bl_mynn_mss,                              &
+       &            bl_mynn_ess,                              &
        &            edmf_w1,edmf_a1,                          &
        &            edmf_w_dd1,edmf_a_dd1,                    &
        &            INITIALIZE_QKE,                           &
@@ -1413,7 +1413,7 @@ CONTAINS
 
     integer, intent(in)           :: kts,kte
     integer, intent(in)           :: bl_mynn_mixlength
-    integer, intent(in)           :: bl_mynn_mss
+    integer, intent(in)           :: bl_mynn_ess
     logical, intent(in)           :: INITIALIZE_QKE
 !    real(kind_phys), intent(in)   :: ust, rmol, pmz, phh, flt, flq
     real(kind_phys), intent(in)   :: rmol, rmolh, Psig_bl, xland, pblh
@@ -1448,7 +1448,7 @@ CONTAINS
 !
 !> - Call mym_level2() to calculate the stability functions at level 2.
     CALL mym_level2 ( kts,kte,                      &
-         &            bl_mynn_mss,                  &
+         &            bl_mynn_ess,                  &
          &            zw, dz, xland, pblh,          &
          &            u, v, thl, thv, thlv,         &
          &            theta, p, exner,              &
@@ -1608,7 +1608,7 @@ CONTAINS
 !!\section gen_mym_level2 GSD MYNN-EDMF mym_level2 General Algorithm
 !! @ {
   SUBROUTINE  mym_level2 (kts,kte,                &
-       &            bl_mynn_mss,                  &
+       &            bl_mynn_ess,                  &
        &            zw, dz, xland, pblh,          &
        &            u, v, thl, thv, thlv,         &
        &            th, p, exner,                 &
@@ -1627,7 +1627,7 @@ CONTAINS
 #endif
 
  real(kind_phys), intent(in)::xland,pblh
- integer, intent(in)        ::bl_mynn_mss
+ integer, intent(in)        ::bl_mynn_ess
  real(kind_phys), dimension(kts:kte), intent(in)  :: dz
  real(kind_phys), dimension(kts:kte), intent(in)  :: u,v, &
       &thl,qw,ql,vt,vq,thv,thlv,th,p,exner,edmf_a,edmf_w, &
@@ -1660,7 +1660,7 @@ CONTAINS
  sh(kts)=zero
  ri(kts)=zero
 
- select case (bl_mynn_mss)  !moist static stability
+ select case (bl_mynn_ess)  !moist static stability
 
     case (0) !use buoyancy flux functions to calculate moist static stability (mss)
 
@@ -2648,7 +2648,7 @@ CONTAINS
     &            tke_budget,                                  &
     &            Psig_bl,Psig_shcu,cldfra_bl1,                &
     &            bl_mynn_mixlength,                           &
-    &            bl_mynn_mss,                                 &
+    &            bl_mynn_ess,                                 &
     &            edmf_w1,edmf_a1,                             &
     &            edmf_w_dd1,edmf_a_dd1,                       &
     &            TKEprod_dn,TKEprod_up,                       &
@@ -2665,7 +2665,7 @@ CONTAINS
 
     integer, intent(in)               :: bl_mynn_mixlength
     integer, intent(in)               :: tke_budget
-    integer, intent(in)               :: bl_mynn_mss
+    integer, intent(in)               :: bl_mynn_ess
     real(kind_phys), intent(in)       :: closure
     real(kind_phys), dimension(kts:kte),   intent(in) :: dz
     real(kind_phys), dimension(kts:kte+1), intent(in) :: zw
@@ -2738,7 +2738,7 @@ CONTAINS
     endif
 
     CALL mym_level2 (kts,kte,                   &
-    &            bl_mynn_mss,                   &
+    &            bl_mynn_ess,                   &
     &            zw, dz, xland, pblh,           &
     &            u, v, thl, thv, thlv,          &
     &            theta, p, exner,               &
@@ -3952,21 +3952,22 @@ END IF
 
            !Add condition for falling/settling into low-RH layers, so at least
            !some cloud fraction is applied for all qc, qs, and qi.
+           rh_hack= rh(k)
            wt2    = min(one, max(zero, zagl - pblh2)/300.) !0 in pbl, 1 aloft
            !ensure adequate RH & q1 when qi is at least 1e-9 (above the PBLH)
-           if ((qi(k)+qs(k))>1.e-10 .and. (zagl .gt. pblh2)) then
-              rh_adj  =min(rhmax, rhcrit + wt2*0.037_kind_phys*(max(zero, ten + log10(qi(k)+qs(k))) ))
-              rh_adj  =max(rh(k), rh_adj)
+           if ((qi(k)+qs(k))>1.e-9 .and. (zagl .gt. pblh2)) then
+              rh_hack =min(rhmax, rhcrit + wt2*0.045_kind_phys*(max(zero,9.0_kind_phys + log10(qi(k)+qs(k))) ))
+              rh(k)   =max(rh(k), rh_hack)
               !add rh-based q1
-              q1_rh   =-3. + three*(rh_adj-rhcrit)/(one-rhcrit)
+              q1_rh   =-3. + 3.*(rh(k)-rhcrit)/(one-rhcrit)
               q1(k)   =max(q1_rh, q1(k) )
            endif
            !ensure adequate rh & q1 when qc is at least 1e-5 (above the PBLH)
            if (qc(k)>1.e-5 .and. (zagl .gt. pblh2)) then
-              rh_adj  =min(rhmax, rhcrit + wt2*0.07_kind_phys*(max(zero, five + log10(qc(k))) ))
-              rh_adj  =max(rh(k), rh_adj)
+              rh_hack =min(rhmax, rhcrit + wt2*0.12_kind_phys*(max(zero,5.0_kind_phys + log10(qc(k))) ))
+              rh(k)   =max(rh(k), rh_hack)
               !add rh-based q1
-              q1_rh   =-3. + three*(rh_adj-rhcrit)/(one-rhcrit)
+              q1_rh   =-3. + 3.*(rh(k)-rhcrit)/(one-rhcrit)
               q1(k)   =max(q1_rh, q1(k) )
            endif
 
