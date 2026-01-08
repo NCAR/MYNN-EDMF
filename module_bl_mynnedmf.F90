@@ -3386,11 +3386,12 @@ else !implicit
           &   + 0.5*dtz(k)*rhoinv(k)*s_aw1(k)*onoff
       b(k)=1. + dtz(k)*(kqdz(k)+kqdz(k+1))*rhoinv(k)             &
           &   + 0.5*dtz(k)*rhoinv(k)*(s_aw1(k)-s_aw1(k+1))*onoff &
-          &   + bp(k)*delt                                          ! JC 12/2025 - check if BEP terms should be added
+          &   + bp(k)*delt - a_e1D(k)*delt                           ! BEP Changes
       c(k)=   - dtz(k)*kqdz(k+1)*rhoinv(k)                       &
           &   - 0.5*dtz(k)*rhoinv(k)*s_aw1(k+1)*onoff
       d(k)=rp(k)*delt + qke(k)                                   &
-          &   + dtz(k)*rhoinv(k)*(s_awqke1(k)-s_awqke1(k+1))*onoff 
+          &   + dtz(k)*rhoinv(k)*(s_awqke1(k)                    &
+          &   - s_awqke1(k+1))*onoff + b_e1D(k)*delt                 ! BEP Changes
    ENDDO
 endif
 
