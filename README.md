@@ -12,9 +12,17 @@ repository, which is then connected to each of the modeling frameworks mentioned
 All future development of the MYNN-EDMF that is intended for NOAA’s operational use 
 will be hosted in this public-facing submodule repository.
 
-The most up-to-date documentation of the MYNN-EDMF is:
-https://repository.library.noaa.gov/view/noaa/19837
-but an update tech note is in the works!
+The most up-to-date documentation of the MYNN-EDMF is new 2026 tech note:
+
+Olson, Joseph B., Wayne M. Angevine, David D. Turner, Xia Sun, Julia M. Simonson,
+Clark Evans, Jaymes S. Kenyon, Haiqin Li, Jordan Schnell, Franciano S. Puhales,
+Tiziana Cherubini, Weiwei Li, and Man Zhang, 2026: A Description of the MYNN-EDMF
+Turbulence Scheme. NOAA Tech. Memo. OAR GSL-77. 60 pp. doi:10.25923/rahr-sj70
+
+The older tech note (Olson et al. 2019; doi:10.25923/n9wm-be49) still has some value,
+for example when referencing older code in HRRRv4/RAPv5, but the updated tech note must
+be used for referencing the contemporary code.
 
 If you'd like to contribute, please reach out to the lead developer, Joseph Olson at
-joseph.b.olson@noaa.gov.
+joseph.b.olson@noaa.gov, but keep in mind that all modification must be designed to work in
+all 3 model frameworks (WRF, MPAS, and CCPP). Thanks in advance.

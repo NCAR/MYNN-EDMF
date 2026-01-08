@@ -102,6 +102,11 @@
 ! *        Kinetic Energy Budget for MYNN-EDMF PBL Scheme in WRF model.*
 ! *        Universidade Federal de Santa Maria Technical Note. 9 pp.   *
 ! *        https://repositorio.ufsm.br/handle/1/28327                  *
+! *     7. Olson, J. B., W. M. Angevine, D. D. Turner, X. Sun,         *
+! *        J. M. Simonson, C. Evans, J. S. Kenyon, H. Li, J. Schnell,  *
+! *        F. S. Puhales, T. Cherubini, W. Li, and M. Zhang, 2026:     *
+! *        A Description of the MYNN-EDMF Turbulence Scheme. NOAA Tech.*
+! *        Memo. OAR GSL-77. 60 pp. https://doi.org/10.25923/rahr-sj70 *
 !***********************************************************************
 ! ==================================================================
 ! Notes on original implementation into WRF-ARW
@@ -248,7 +253,9 @@
 !            Bug fix for the momentum transport.
 !            Lots of code cleanup: removal of test code, comments, changing text case, etc.
 !            Many misc tuning/tweaks.
-!
+! v4.8 / CCPP
+!            Many updates captured in the Olson et al. (2026) MYNN-EDMF tech note (see listed
+!            references above).
 ! Many of these changes are now documented in references listed above.
 !====================================================================
 
@@ -3944,22 +3951,21 @@ END IF
 
            !Add condition for falling/settling into low-RH layers, so at least
            !some cloud fraction is applied for all qc, qs, and qi.
-           rh_hack= rh(k)
            wt2    = min(one, max(zero, zagl - pblh2)/300.) !0 in pbl, 1 aloft
            !ensure adequate RH & q1 when qi is at least 1e-9 (above the PBLH)
-           if ((qi(k)+qs(k))>1.e-9 .and. (zagl .gt. pblh2)) then
-              rh_hack =min(rhmax, rhcrit + wt2*0.045_kind_phys*(max(zero,9.0_kind_phys + log10(qi(k)+qs(k))) ))
-              rh(k)   =max(rh(k), rh_hack)
+           if ((qi(k)+qs(k))>1.e-10 .and. (zagl .gt. pblh2)) then
+              rh_adj  =min(rhmax, rhcrit + wt2*0.037_kind_phys*(max(zero, ten + log10(qi(k)+qs(k))) ))
+              rh_adj  =max(rh(k), rh_adj)
               !add rh-based q1
-              q1_rh   =-3. + 3.*(rh(k)-rhcrit)/(one-rhcrit)
+              q1_rh   =-3. + three*(rh_adj-rhcrit)/(one-rhcrit)
               q1(k)   =max(q1_rh, q1(k) )
            endif
-           !ensure adequate rh & q1 when qc is at least 1e-6 (above the PBLH)
+           !ensure adequate rh & q1 when qc is at least 1e-5 (above the PBLH)
            if (qc(k)>1.e-5 .and. (zagl .gt. pblh2)) then
-              rh_hack =min(rhmax, rhcrit + wt2*0.12_kind_phys*(max(zero,5.0_kind_phys + log10(qc(k))) ))
-              rh(k)   =max(rh(k), rh_hack)
+              rh_adj  =min(rhmax, rhcrit + wt2*0.07_kind_phys*(max(zero, five + log10(qc(k))) ))
+              rh_adj  =max(rh(k), rh_adj)
               !add rh-based q1
-              q1_rh   =-3. + 3.*(rh(k)-rhcrit)/(one-rhcrit)
+              q1_rh   =-3. + three*(rh_adj-rhcrit)/(one-rhcrit)
               q1(k)   =max(q1_rh, q1(k) )
            endif
 
