@@ -102,6 +102,11 @@
 ! *        Kinetic Energy Budget for MYNN-EDMF PBL Scheme in WRF model.*
 ! *        Universidade Federal de Santa Maria Technical Note. 9 pp.   *
 ! *        https://repositorio.ufsm.br/handle/1/28327                  *
+! *     7. Olson, J. B., W. M. Angevine, D. D. Turner, X. Sun,         *
+! *        J. M. Simonson, C. Evans, J. S. Kenyon, H. Li, J. Schnell,  *
+! *        F. S. Puhales, T. Cherubini, W. Li, and M. Zhang, 2026:     *
+! *        A Description of the MYNN-EDMF Turbulence Scheme. NOAA Tech.*
+! *        Memo. OAR GSL-77. 60 pp. https://doi.org/10.25923/rahr-sj70 *
 !***********************************************************************
 ! ==================================================================
 ! Notes on original implementation into WRF-ARW
@@ -248,7 +253,9 @@
 !            Bug fix for the momentum transport.
 !            Lots of code cleanup: removal of test code, comments, changing text case, etc.
 !            Many misc tuning/tweaks.
-!
+! v4.8 / CCPP
+!            Many updates captured in the Olson et al. (2026) MYNN-EDMF tech note (see listed
+!            references above).
 ! Many of these changes are now documented in references listed above.
 !====================================================================
 
@@ -420,10 +427,9 @@ CONTAINS
              sh1                , sm1               , kh1               , &
              km1                ,                                         &
              !smoke variables
-             nchem              , kdvel             , ndvel             , &
-             chem               , vdep              , frp               , &
-             emis_ant_no        , mix_chem,enh_mix  , rrfs_sd           , &
-             smoke_dbg          ,                                         &
+             nchem              , ndvel             ,                     &
+             chem1              , vdep              , frp               , &
+             emis_ant_no        , mix_chem,enh_mix  , settle1           , &
              !generic scalar array
              scalars            , nscalars          ,                     &
              !higher-order moments
@@ -449,15 +455,15 @@ CONTAINS
              bl_mynn_edmf       , bl_mynn_edmf_mom  , bl_mynn_edmf_tke  , &
              bl_mynn_mixscalars , bl_mynn_mixaerosols,bl_mynn_mixnumcon , &
              bl_mynn_output     , bl_mynn_cloudmix  , bl_mynn_mixqt     , &
-             bl_mynn_edmf_dd    , bl_mynn_mss       ,                     &
+             bl_mynn_edmf_dd    , bl_mynn_ess       ,                     &
              !3d emdf output
              edmf_a1            , edmf_w1           , edmf_qt1          , &
              edmf_thl1          , edmf_ent1         , edmf_qc1          , &
              sub_thl1           , sub_sqv1          , det_thl1          , &
              det_sqv1           ,                                         &
-             !spp,
+             !spp
              spp_pbl            , pattern_spp_pbl1  ,                     &
-             !check flags,
+             !check flags
              FLAG_QC            , FLAG_QI           , FLAG_QNC          , &
              FLAG_QNI           , FLAG_QS           , FLAG_QNWFA        , &
              FLAG_QNIFA         , FLAG_QNBCA        , FLAG_OZONE        , &
@@ -489,7 +495,7 @@ CONTAINS
  integer, intent(in) :: bl_mynn_output
  integer, intent(in) :: bl_mynn_cloudmix
  integer, intent(in) :: bl_mynn_mixqt
- integer, intent(in) :: bl_mynn_mss
+ integer, intent(in) :: bl_mynn_ess
  integer, intent(in) :: icloud_bl
  integer, intent(in) :: sf_urban_physics ! BEP Changes
  real(kind_phys), intent(in) :: closure
@@ -498,7 +504,7 @@ CONTAINS
                         FLAG_QNWFA,FLAG_QNIFA,FLAG_QNBCA, &
                         FLAG_OZONE,FLAG_QS
 
- logical, intent(in) :: mix_chem,enh_mix,rrfs_sd,smoke_dbg
+ logical, intent(in) :: mix_chem,enh_mix
 
  integer, intent(in) :: KTS,KTE
 
@@ -560,8 +566,9 @@ CONTAINS
        edmf_u1,edmf_v1,edmf_qv1
  
 !smoke/chemical arrays
- integer, intent(in) ::   nchem, kdvel, ndvel
- real(kind_phys), dimension(kts:kte,nchem), intent(inout) :: chem
+ integer, intent(in) ::   nchem, ndvel
+ real(kind_phys), dimension(kts:kte,nchem), intent(inout) :: chem1
+ real(kind_phys), dimension(kts:kte,nchem), intent(in   ) :: settle1
  real(kind_phys), dimension(ndvel), intent(in)    :: vdep
  real(kind_phys),                   intent(in)    :: frp,emis_ant_no
  real(kind_phys), dimension(kts:kte+1,nchem)      :: s_awchem1
@@ -631,7 +638,7 @@ CONTAINS
              print*," qv=",sqv1(k)," qc=",sqc1(k)
              print*," u*=",ust," wspd=",wspd
              print*," xland=",xland," ts=",ts
-             print*," z/L=",p5*dz1(1)*rmol," ps=",ps,"delp1=",ps-pres1(kts)
+             print*," ps=",ps,"delp1=",ps-pres1(kts)
              print*," znt=",znt," dx=",dx," dz(1)=",dz1(1)
           endif
        enddo
@@ -778,6 +785,8 @@ CONTAINS
 !! \f$q^{'2}\f$, and \f$\theta^{'}q^{'}\f$. These variables are calculated after 
 !! obtaining prerequisite variables by calling the following subroutines from 
 !! within mym_initialize(): mym_level2() and mym_length().
+       rmol = zero
+       rmolh= zero
        CALL mym_initialize (                & 
             &kts,kte,xland,pblh,            &
             &dz1, dx, zw1, pres1, ex1,      &
@@ -789,7 +798,7 @@ CONTAINS
             &tsq1, qsq1, cov1,              &
             &Psig_bl, cldfra_bl1,           &
             &bl_mynn_mixlength,             &
-            &bl_mynn_mss,                   &
+            &bl_mynn_ess,                   &
             &edmf_w1,edmf_a1,               &
             &edmf_w_dd1,edmf_a_dd1,         &
             &INITIALIZE_QKE,                &
@@ -1037,7 +1046,7 @@ CONTAINS
             &det_thl1,det_sqv1,det_sqc1,              &
             &det_u1,det_v1,                           &
             ! chem/smoke mixing
-            &nchem,chem,s_awchem1,                    &
+            &nchem,chem1,s_awchem1,                   &
             &mix_chem,                                &
             &nscalars,scalars,s_awscalars1,           &
             &qc_bl1,cldfra_bl1,                       &
@@ -1120,7 +1129,7 @@ CONTAINS
             &tke_budget,                                 &
             &Psig_bl,Psig_shcu,                          &
             &cldfra_bl1,bl_mynn_mixlength,               &
-            &bl_mynn_mss,                                &
+            &bl_mynn_ess,                                &
             &edmf_w1,edmf_a1,                            &
             &edmf_w_dd1,edmf_a_dd1,                      &
             &TKEprod_dn,TKEprod_up,                      &
@@ -1203,36 +1212,21 @@ CONTAINS
             &sf1D,vl1D                                   ) !urban
 
     if ( mix_chem ) then
-       if ( rrfs_sd ) then 
           call mynn_mix_chem(kts,kte,i,                  &
                &delt, dz1, pblh,                         &
-               &nchem, kdvel, ndvel,                     &
-               &chem, vdep,                              &
-               &rho1, flt,                               &
-               &tcd1, qcd1,                              &
-               &dfh1,                                    &
-               &s_aw1,s_awchem1,                         &
-               &emis_ant_no,                             &
-               &frp, rrfs_sd,                            &
-               &enh_mix, smoke_dbg,                      &
-               &bl_mynn_edmf                             )
-       else
-          call mynn_mix_chem(kts,kte,i,                  &
-               &delt, dz1, pblh,                         &
-               &nchem, kdvel, ndvel,                     &
-               &chem, vdep,                              &
+               &nchem, ndvel,                            &
+               &chem1, vdep, settle1,                    &
                &rho1, flt,                               &
                &tcd1, qcd1,                              &
                &dfh1,                                    &
                &s_aw1,s_awchem1,                         &
                &zero,                                    &
-               &zero, rrfs_sd,                           &
-               &enh_mix, smoke_dbg,                      &
+               &zero,                                    &
+               &enh_mix,                                 &
                &bl_mynn_edmf                             )
-       endif
        do ic = 1,nchem
           do k = kts,kte
-             chem(k,ic) = max(1.e-12, chem(k,ic))
+             chem1(k,ic) = max(1.e-12, chem1(k,ic))
           enddo
        enddo
     endif
@@ -1396,7 +1390,7 @@ CONTAINS
        &            Qke, Tsq, Qsq, Cov,                       &
        &            Psig_bl, cldfra_bl1,                      &
        &            bl_mynn_mixlength,                        &
-       &            bl_mynn_mss,                              &
+       &            bl_mynn_ess,                              &
        &            edmf_w1,edmf_a1,                          &
        &            edmf_w_dd1,edmf_a_dd1,                    &
        &            INITIALIZE_QKE,                           &
@@ -1406,7 +1400,7 @@ CONTAINS
 
     integer, intent(in)           :: kts,kte
     integer, intent(in)           :: bl_mynn_mixlength
-    integer, intent(in)           :: bl_mynn_mss
+    integer, intent(in)           :: bl_mynn_ess
     logical, intent(in)           :: INITIALIZE_QKE
 !    real(kind_phys), intent(in)   :: ust, rmol, pmz, phh, flt, flq
     real(kind_phys), intent(in)   :: rmol, rmolh, Psig_bl, xland, pblh
@@ -1441,7 +1435,7 @@ CONTAINS
 !
 !> - Call mym_level2() to calculate the stability functions at level 2.
     CALL mym_level2 ( kts,kte,                      &
-         &            bl_mynn_mss,                  &
+         &            bl_mynn_ess,                  &
          &            zw, dz, xland, pblh,          &
          &            u, v, thl, thv, thlv,         &
          &            theta, p, exner,              &
@@ -1601,7 +1595,7 @@ CONTAINS
 !!\section gen_mym_level2 GSD MYNN-EDMF mym_level2 General Algorithm
 !! @ {
   SUBROUTINE  mym_level2 (kts,kte,                &
-       &            bl_mynn_mss,                  &
+       &            bl_mynn_ess,                  &
        &            zw, dz, xland, pblh,          &
        &            u, v, thl, thv, thlv,         &
        &            th, p, exner,                 &
@@ -1620,7 +1614,7 @@ CONTAINS
 #endif
 
  real(kind_phys), intent(in)::xland,pblh
- integer, intent(in)        ::bl_mynn_mss
+ integer, intent(in)        ::bl_mynn_ess
  real(kind_phys), dimension(kts:kte), intent(in)  :: dz
  real(kind_phys), dimension(kts:kte), intent(in)  :: u,v, &
       &thl,qw,ql,vt,vq,thv,thlv,th,p,exner,edmf_a,edmf_w, &
@@ -1636,7 +1630,7 @@ CONTAINS
  real(kind_phys):: a2fac,thv1,thv0,eth0,eth1,lambda,qsat, &
       &xl,tabs,clam0,clam,wt,mfi,qkei,cldfrai,ugrid,      &
       &uonset,taper
- real(kind_phys), parameter:: thvp = 0.5 !percentage of thv in blend
+ real(kind_phys), parameter:: thvp = 0.0 !0.25 !percentage of thv in blend
 
 !    ev  = 2.5e6
 !    tv0 = 0.61*tref
@@ -1653,9 +1647,9 @@ CONTAINS
  sh(kts)=zero
  ri(kts)=zero
 
- select case (bl_mynn_mss)  !moist static stability
+ select case (bl_mynn_ess)  !moist static stability
 
-    case (0) !use buoyancy flux functions to calculate moist static stability (mss)
+    case (0) !use buoyancy flux functions to calculate effective static stability (ess)
 
        do k = kts+1,kte
           dzk = p5 *( dz(k)+dz(k-1) )
@@ -1681,7 +1675,7 @@ CONTAINS
           ri(k) = -gh(k)/MAX( duz, 1.0e-10_kind_phys )
        enddo
        
-    case (1) !form of moist static stability (mss) similar to O'Gorman (2011, JAS)
+    case (1) !form of effective static stability (ess) similar to O'Gorman (2011, JAS)
        !but modified to better fit within the MYNN-EDMF. This approach
        !destabilizes the lapse rates in grid cells with tke/mf/clouds by adding
        !a negative eqiv potential temperature gradient proportional to the
@@ -1689,14 +1683,14 @@ CONTAINS
        !units of s/m (i.e., eddy timescale / pbl depth ~ 1.8), but needs to be
        !limited over land as noted below.
        !--------------------------------
-       !taper mss for hurricane conditions
+       !taper ess for hurricane conditions
        ugrid  = sqrt(u(kts)**2 + v(kts)**2)
        uonset = twenty
        taper  = one - p9*min(one, max(zero, ugrid - uonset)/thirty) !reduce to 0.1
        if ((xland-1.5).GE.zero) then !water
           clam0 = 1.8_kind_phys * taper
        else                          !land
-          !since the MF is much large over land and pblhs are much deeper,
+          !since the MF and TKE is much large over land and pblhs are much deeper,
           !we need a smaller tuning constant.
           clam0 = 0.08_kind_phys
        endif
@@ -1713,6 +1707,8 @@ CONTAINS
           !blend clam to free tropospheric value (0.2) above the pblh
           wt    = min(one, max(zero, zw(k)-(pblh+hundred))/max(400._kind_phys, p3*pblh)) !0 below pblh, 1 above pblh
           clam  = clam0*(one-wt) + p2*wt
+          !choke of clam near the surface
+          clam  = clam * min(one, max(zero, zw(k)-twenty)/200.0_kind_phys)
 
           !Use a blended subgrid-cloud-included theta-v and theta-l-v for background
           !thermodynamic profile:
@@ -1745,8 +1741,8 @@ CONTAINS
           !cldfrai  = max(ncld, min(p1,mfi)) !TEST: always allow some destabilization in grid cells with plumes.
           
           !lambda significantly departs from OGorman (2011) by using MYNN-EDMF-specific information: 
-          !lambda= clam * max(mfi, qkei) * cldfrai
-          lambda= clam * (mfi + qkei) * cldfrai
+          lambda= clam * max(mfi, qkei) * cldfrai
+          !lambda= clam * (mfi + qkei) * cldfrai
           dtq   = ( thv1-thv0 )/dzk + lambda*min(zero, ( eth1-eth0 )/dzk )
           !dtq = max(zero, dtq)
 
@@ -1902,7 +1898,7 @@ CONTAINS
         alp5 = p3
 
         ! Impose limits on the height integration for elt and the transition layer depth
-        pblh2= min(10000.,zw(kte-2))  !originally integrated to model top, not just 10 km.
+        pblh2= pblh+dz(kts)          !originally integrated to model top, not just pblh.
         h1   = max(0.3*pblh2,mindz)
         h1   = min(h1,maxdz)         ! 1/2 transition layer depth
         h2   = h1/2.0                ! 1/4 transition layer depth
@@ -1977,18 +1973,19 @@ CONTAINS
         ugrid = sqrt(u1(kts)**2 + v1(kts)**2)
         uonset= twenty
         wt_u1 = one - p2*min(one, max(zero, ugrid - uonset)/fifty) !reduce to 0.8
-        wt_u2 = one - p4*min(one, max(zero, ugrid - uonset)/fifty) !reduce to 0.6
-        cns   = 3.5_kind_phys
-        alp1  = 0.23_kind_phys
+        wt_u2 = one - p5*min(one, max(zero, ugrid - uonset)/fifty) !reduce to 0.5
         !scale-awareness for the mesoscale greyzone (4-16 km)
         wt_dx = one - min(one, (max(zero, dx-4000._kind_phys)/12000._kind_phys))
-        alp2  = p3*wt_dx + (one-wt_dx)*0.42_kind_phys
+
+        cns   = 3.5_kind_phys
+        alp1  = 0.23_kind_phys*wt_dx + (one-wt_dx)*0.24_kind_phys
+        alp2  = p3*wt_dx             + (one-wt_dx)*0.40_kind_phys
         alp3  = five * wt_u2 !taper off bouyancy enhancement in shear-driven pbls
-        !if ((xland-1.5).GE.zero) then !hurricane tuning, over water only
-        !   alp4  = 30.0_kind_phys * wt_u2
-        !else
-           alp4  = 20.0_kind_phys
-        !endif
+        if ((xland-1.5).GE.zero) then !hurricane tuning, over water only
+           alp4  = twenty ! * wt_u2
+        else
+           alp4  = 15.0_kind_phys
+        endif
         alp5  = p3
         alp6  = fifty
 
@@ -2017,7 +2014,7 @@ CONTAINS
         !   **  Strictly, zwk*h(i,j) -> ( zwk*h(i,j)+z0 )  **
         k   = kts+1
         zwk = zw(k)
-        DO WHILE (zwk .LE. pblh2+max(150.,min(p3*pblh2,500._kind_phys)))
+        DO WHILE (zwk .LE. pblh2+max(200.,min(p3*pblh2,600._kind_phys)))
            dzk = p5*( dz(k)+dz(k-1) )
            qdz = min(max( qkw(k), 0.01_kind_phys ), 30.0_kind_phys)*dzk
            elt = elt +qdz*zwk
@@ -2072,17 +2069,16 @@ CONTAINS
 
            z_m = MAX(karman, zwk - four)
            !   **  Length scale in the surface layer  **
-           IF ( rmolh .GT. 0.0 ) THEN
-              els  = karman*zwk/(one+cns*MIN( zwk*rmolh, zmax ))
-              els1 = karman*z_m/(one+cns*MIN( zwk*rmolh, zmax ))
+           IF ( rmol .GT. 0.0 ) THEN
+              els  = karman*zwk/(one+cns*MIN( zwk*rmol, zmax ))
+              els1 = karman*z_m/(one+cns*MIN( zwk*rmol, zmax ))
            ELSE
-              els  = karman*zwk*( one - alp4* zwk*rmolh)**p2
-              els1 = karman*z_m*( one - alp4* zwk*rmolh)**p2
+              els  = karman*zwk*( one - alp4* zwk*rmol)**p2
+              els1 = karman*z_m*( one - alp4* zwk*rmol)**p2
            END IF
 
            !   ** NOW BLEND THE MIXING LENGTH SCALES:
            wt =p5*TANH((zwk - (pblh2+h1))/h2) + p5
-           wt2=p5*TANH((zwk - (pblh2+twenty))/300._kind_phys) + p5
            !add blending to use BouLac mixing length in free atmos;
            !defined relative to the PBLH (pblh) + transition layer (h1)
            !el(k) = MIN(elb/( elb/elt+elb/els+one ),elf)
@@ -2096,8 +2092,6 @@ CONTAINS
            if ((xland-1.5).GE.zero) then !hurricane tuning, over water only
               el(k)  = el(k)*wt_u1
            endif
-           !add step to ensure BouLac ML isnt exaggerating el in the PBL
-           !elBLavg(k)= el(k)*(one-wt2) + elBLavg(k)*wt2
            el(k)     = el(k)*(one-wt) + elBLavg(k)*wt
 
            !if (el(k) > 1000.) then
@@ -2641,7 +2635,7 @@ CONTAINS
     &            tke_budget,                                  &
     &            Psig_bl,Psig_shcu,cldfra_bl1,                &
     &            bl_mynn_mixlength,                           &
-    &            bl_mynn_mss,                                 &
+    &            bl_mynn_ess,                                 &
     &            edmf_w1,edmf_a1,                             &
     &            edmf_w_dd1,edmf_a_dd1,                       &
     &            TKEprod_dn,TKEprod_up,                       &
@@ -2658,7 +2652,7 @@ CONTAINS
 
     integer, intent(in)               :: bl_mynn_mixlength
     integer, intent(in)               :: tke_budget
-    integer, intent(in)               :: bl_mynn_mss
+    integer, intent(in)               :: bl_mynn_ess
     real(kind_phys), intent(in)       :: closure
     real(kind_phys), dimension(kts:kte),   intent(in) :: dz
     real(kind_phys), dimension(kts:kte+1), intent(in) :: zw
@@ -2731,7 +2725,7 @@ CONTAINS
     endif
 
     CALL mym_level2 (kts,kte,                   &
-    &            bl_mynn_mss,                   &
+    &            bl_mynn_ess,                   &
     &            zw, dz, xland, pblh,           &
     &            u, v, thl, thv, thlv,          &
     &            theta, p, exner,               &
@@ -3379,11 +3373,12 @@ else !implicit
           &   + 0.5*dtz(k)*rhoinv(k)*s_aw1(k)*onoff
       b(k)=1. + dtz(k)*(kqdz(k)+kqdz(k+1))*rhoinv(k)             &
           &   + 0.5*dtz(k)*rhoinv(k)*(s_aw1(k)-s_aw1(k+1))*onoff &
-          &   + bp(k)*delt                                          ! JC 12/2025 - check if BEP terms should be added
+          &   + bp(k)*delt - a_e1D(k)*delt                           ! BEP Changes
       c(k)=   - dtz(k)*kqdz(k+1)*rhoinv(k)                       &
           &   - 0.5*dtz(k)*rhoinv(k)*s_aw1(k+1)*onoff
       d(k)=rp(k)*delt + qke(k)                                   &
-          &   + dtz(k)*rhoinv(k)*(s_awqke1(k)-s_awqke1(k+1))*onoff 
+          &   + dtz(k)*rhoinv(k)*(s_awqke1(k)                    &
+          &   - s_awqke1(k+1))*onoff + b_e1D(k)*delt                 ! BEP Changes
    ENDDO
 endif
 
@@ -3684,14 +3679,14 @@ END IF
     real(kind_phys), dimension(kts:kte), intent(inout) :: vt,vq,sgm
 
     real(kind_phys), dimension(kts:kte) :: alp,a,bet,b,ql,q1,RH
-    real(kind_phys), dimension(kts:kte), intent(out) :: qc_bl1,qi_bl1, &
+    real(kind_phys), dimension(kts:kte), intent(out) :: qc_bl1,qi_bl1,   &
          &cldfra_bl1
     DOUBLE PRECISION :: t3sq, r3sq, c3sq
 
     real(kind_phys):: qsl,esat,qsat,dqsl,cld0,q1k,qlk,eq1,qll,           &
          &q2p,pt,rac,qt,t,xl,rsl,cpm,Fng,qww,alpha,beta,bb,sgmq,sgmc,    &
          &ls,wt,wt2,cld_factor,fac_damp,liq_frac,ql_ice,ql_water,        &
-         &qmq,qsat_tk,q1_rh,rh_hack,zsl,maxqc,cldfra_rh,cldfra_qsq,      &
+         &qmq,qsat_tk,q1_rh,rh_adj,zsl,maxqc,cldfra_rh,cldfra_qsq,       &
          &cldfra_rh0,cldfra_rh1,cldfra_qsq0,cldfra_qsq1,clim,qlim
     !lower limits for sgm (for mixing ratio estimates) in case sgm falls out (% of qw)
     real(kind_phys), parameter :: qlim_sfc =0.008
@@ -3944,22 +3939,21 @@ END IF
 
            !Add condition for falling/settling into low-RH layers, so at least
            !some cloud fraction is applied for all qc, qs, and qi.
-           rh_hack= rh(k)
            wt2    = min(one, max(zero, zagl - pblh2)/300.) !0 in pbl, 1 aloft
            !ensure adequate RH & q1 when qi is at least 1e-9 (above the PBLH)
-           if ((qi(k)+qs(k))>1.e-9 .and. (zagl .gt. pblh2)) then
-              rh_hack =min(rhmax, rhcrit + wt2*0.045_kind_phys*(max(zero,9.0_kind_phys + log10(qi(k)+qs(k))) ))
-              rh(k)   =max(rh(k), rh_hack)
+           if ((qi(k)+qs(k))>1.e-10 .and. (zagl .gt. pblh2)) then
+              rh_adj  =min(rhmax, rhcrit + wt2*0.037_kind_phys*(max(zero, ten + log10(qi(k)+qs(k))) ))
+              rh_adj  =max(rh(k), rh_adj)
               !add rh-based q1
-              q1_rh   =-3. + 3.*(rh(k)-rhcrit)/(one-rhcrit)
+              q1_rh   =-3. + three*(rh_adj-rhcrit)/(one-rhcrit)
               q1(k)   =max(q1_rh, q1(k) )
            endif
-           !ensure adequate rh & q1 when qc is at least 1e-6 (above the PBLH)
+           !ensure adequate rh & q1 when qc is at least 1e-5 (above the PBLH)
            if (qc(k)>1.e-5 .and. (zagl .gt. pblh2)) then
-              rh_hack =min(rhmax, rhcrit + wt2*0.12_kind_phys*(max(zero,5.0_kind_phys + log10(qc(k))) ))
-              rh(k)   =max(rh(k), rh_hack)
+              rh_adj  =min(rhmax, rhcrit + wt2*0.07_kind_phys*(max(zero, five + log10(qc(k))) ))
+              rh_adj  =max(rh(k), rh_adj)
               !add rh-based q1
-              q1_rh   =-3. + 3.*(rh(k)-rhcrit)/(one-rhcrit)
+              q1_rh   =-3. + three*(rh_adj-rhcrit)/(one-rhcrit)
               q1(k)   =max(q1_rh, q1(k) )
            endif
 
@@ -5806,14 +5800,14 @@ ENDIF
 
 SUBROUTINE mynn_mix_chem(kts,kte,i,     &
      delt,dz,pblh,                      &
-     nchem, kdvel, ndvel,               &
-     chem1, vd1,                        &
+     nchem, ndvel,                      &
+     chem1, vd1, settle1,               &
      rho,                               &
      flt, tcd, qcd,                     &
      dfh,                               &
      s_aw1, s_awchem1,                  &
-     emis_ant_no, frp, rrfs_sd,         &
-     enh_mix, smoke_dbg,                &
+     emis_ant_no, frp,                  &
+     enh_mix,                           &
      bl_mynn_edmf                       )
 
 !-------------------------------------------------------------------
@@ -5822,13 +5816,14 @@ real(kind_phys), dimension(kts:kte), intent(in) :: dfh,dz,tcd,qcd
 real(kind_phys), dimension(kts:kte), intent(in) :: rho
 real(kind_phys), intent(in)    :: flt
 real(kind_phys), intent(in)    :: delt,pblh
-integer, intent(in) :: nchem, kdvel, ndvel
+integer, intent(in) :: nchem, ndvel
 real(kind_phys), dimension( kts:kte+1), intent(in) :: s_aw1
 real(kind_phys), dimension( kts:kte, nchem ), intent(inout) :: chem1
+real(kind_phys), dimension( kts:kte, nchem ), intent(in) :: settle1
 real(kind_phys), dimension( kts:kte+1,nchem), intent(in) :: s_awchem1
 real(kind_phys), dimension( ndvel ), intent(in) :: vd1
 real(kind_phys), intent(in) :: emis_ant_no,frp
-logical, intent(in) :: rrfs_sd,enh_mix,smoke_dbg
+logical, intent(in) :: enh_mix
 !local vars
 real(kind_phys), dimension(kts:kte) :: dtz,upcont,dncont
 real(kind_phys), dimension(kts:kte) :: a,b,c,d,x
@@ -5878,7 +5873,7 @@ if (bl_mynn_edmf == 1) then
 endif
 
 !Enhanced mixing over fires
-IF ( rrfs_sd .and. enh_mix ) THEN
+IF ( enh_mix ) THEN
    DO k=kts+1,kte-1
       khdz_old  = khdz(k)
       khdz_back = pblh * 0.15_kind_phys / dz(k)
@@ -5955,7 +5950,7 @@ DO ic = 1,nchem
    CALL tridiag3(kte,a,b,c,d,x)
 
    DO k=kts,kte
-      chem1(k,ic)=x(k)
+      chem1(k,ic)=x(k) + settle1(k,ic)
    ENDDO
 
 ENDDO
@@ -6554,7 +6549,7 @@ END SUBROUTINE GET_PBLH
  real(kind_phys),dimension(kts:kte), intent(inout) :: vt1, vq1, sgm1
  real(kind_phys):: sigq,xl,rsl,cpm,a,qmq,Aup,Q1,diffqt,qsat_tk,     &
          Fng,qww,alpha,beta,bb,f,pt,t,q2p,b9,satvp,rhgrid,entfac,   &
-         cf_strat,qc_strat,cf_mf,qc_mf,pct_mf,wt2,dqwdz,tauc
+         cf_strat,qc_strat,cf_mf,qc_mf,qc_mf_min,pct_mf,wt2,dqwdz,tauc
  real(kind_phys), parameter :: cf_thresh = 0.5 ! only overwrite stratus CF less than this value
 
  ! Variables interpolated to interface levels
@@ -6882,7 +6877,7 @@ END SUBROUTINE GET_PBLH
           !0.58*16 = 9.28
           !0.58*10 = 5.8
           !0.58*5  = 2.9
-          exc_fac = 8.1_kind_phys
+          exc_fac = 9.28_kind_phys
        else
           !land: no need to increase factor - already sufficiently large superadiabatic layers
           exc_fac = 0.58_kind_phys
@@ -6988,7 +6983,7 @@ END SUBROUTINE GET_PBLH
           ! 0.30 ~ 1.43
           ! 0.28 ~ 1.33
           ! 0.26 ~ 1.24
-          entfac = 0.21_kind_phys * min(1.62_kind_phys, max(1.33_kind_phys, sqrt(qkebl)))
+          entfac = 0.21_kind_phys * min(1.62_kind_phys, max(1.30_kind_phys, sqrt(qkebl)))
           !entfac = 0.33_kind_phys
           !make entfac tend to original value (0.33) above the pblh:
           wt2    = min(one, max(zero, zagl - pblh)/500._kind_phys) !0 in pbl, 1 aloft
@@ -7613,36 +7608,35 @@ END SUBROUTINE GET_PBLH
             !   print*," cf_mf=",cf_mf," cldfra_bl=",cldfra_bl1(k)," edmf_a1=",edmf_a1(k)
             !endif
 
-            ! Update cloud fractions and specific humidities in grid cells
-            ! where the mass-flux scheme is active. The specific humidities
-            ! are converted to grid means (not in-cloud quantities).
+            !Update cloud fractions and specific humidities in grid cells
+            !where the mass-flux scheme is active. The specific humidities
+            !are converted to grid means (not in-cloud quantities).
             if ((landsea-1.5).GE.zero) then  ! water
                if (QCp * Aup > 5e-5) then
                   qc_mf     = 1.86_kind_phys * (QCp * Aup) - 2.2e-5_kind_phys
                else
-                  qc_mf     = 1.23_kind_phys * (QCp * Aup)
+                  qc_mf     = 1.20_kind_phys * (QCp * Aup)
                endif
-               qc_mf = max(qc_mf, qsat_tk*0.012_kind_phys*cf_mf)
-               
-               cf_strat     = cldfra_bl1(k)
-               qc_strat     = qc_bl1(k)
-               cldfra_bl1(k)= max(cf_mf, cf_strat)
-               pct_mf       = cf_mf/cldfra_bl1(k)
-               qc_bl1(k)    = qc_mf*pct_mf + (one-pct_mf)*qc_strat
             else                             ! land
                if (QCp * Aup > 5e-5) then
                   qc_mf     = 1.86_kind_phys * (QCp * Aup) - 2.2e-5_kind_phys
                else
-                  qc_mf     = 1.23_kind_phys * (QCp * Aup)
+                  qc_mf     = 1.20_kind_phys * (QCp * Aup)
                endif
-               qc_mf = max(qc_mf, qsat_tk*0.012_kind_phys*cf_mf)
-               
-               cf_strat	    = cldfra_bl1(k)
-               qc_strat     = qc_bl1(k)
-               cldfra_bl1(k)= max(cf_mf, cf_strat)
-               pct_mf 	    = cf_mf/cldfra_bl1(k)
-               qc_bl1(k)    = qc_mf*pct_mf + (one-pct_mf)*qc_strat
             endif
+            !In the condition of very large cloud fractions, where the instantaneous
+            !condensed water in the plume is not a reasonable estimate of the
+            !mixing ratio in a larger cloud, we must rely on a background estimate based
+            !off of environmental qsat.
+            wt2          = one - min(one, max(zero, (cf_mf - thirty))/(hundred-thirty))
+            qc_mf_min    = wt2*qsat_tk*0.01_kind_phys*cf_mf + (one-wt2)*qsat_tk*0.025_kind_phys*cf_mf
+            qc_mf        = max(qc_mf, qc_mf_min)
+            !Then blend with the stratus component:
+            cf_strat     = cldfra_bl1(k)
+            qc_strat     = qc_bl1(k)
+            cldfra_bl1(k)= max(cf_mf, cf_strat)
+            pct_mf       = cf_mf/cldfra_bl1(k)
+            qc_bl1(k)    = qc_mf*pct_mf + (one-pct_mf)*qc_strat
 
             !Now recalculate the terms for the buoyancy flux for mass-flux clouds:
             !See mym_condensation for details on these formulations.
@@ -7658,9 +7652,9 @@ END SUBROUTINE GET_PBLH
             if (Q1 .ge. one) then
                Fng = one
             elseif (Q1 .ge. -1.7 .and. Q1 .lt. one) then
-               Fng = EXP(-0.4*(Q1-one))
+               Fng = EXP(-p4*(Q1-one))
             elseif (Q1 .ge. -2.5 .and. Q1 .lt. -1.7) then
-               Fng = 3.0 + EXP(-3.8*(Q1+1.7))
+               Fng = three + EXP(-3.8*(Q1+1.7))
             else
                Fng = min(23.9 + EXP(-1.6*(Q1+2.5)), 60.)
             endif
@@ -7951,13 +7945,14 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
 
    !downdraft properties
         integer, parameter::                                          &
-            & ndd    = 5,               &  !number of downdrafts
-            & kmin   = 3                   !lowest k-level where downdrafts can start
+            & ndd        = 5,           &  !number of downdrafts
+            & kmin       = 3               !lowest k-level where downdrafts can start
         real(kind_phys),parameter ::                                  &
-            & minddd = 400.,            &  !min downdraft diameter (m)
-            & maxddd = 1000,            &  !max downdraft diameter (m)
-            & zmin   = 50.,             &  !lowest height where downdrafts can start
-            & dz200  = 200.                !depth over which other parameters are normalized to
+            & minddd     = 50., & ! 400.,            &  !min downdraft diameter (m)
+            & maxddd     = 500.,& !1000,            &  !max downdraft diameter (m)
+            & zmin       = 50.,         &  !lowest height where downdrafts can start
+            & dz200      = 200.,        &  !depth over which other parameters are normalized to
+            & ct_cooling = -0.00011        !activation threshold of ~ -10 C cooling at cloud top per day
         real(kind_phys)::                                             &
             & maxdd2,                   &  !variable max downdraft diameter (m)
             &    ddd,                   &  !downdraft diameter
@@ -7983,7 +7978,7 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
         real(kind_phys):: jump_thv,jump_qt,jump_thetal,               &
             refthl,refthv,refthlv,refqt,refqc,refqi,refqnc,refqni,    &
             refqnwfa,refqnifa,refu,refv,refqke,refqt2,reftk,refp,     &
-            qx_k,qx_km1,refthvm1,cftop,ac_wsp,wspd_pbl
+            qx_k,qx_km1,refthvm1,cftop,crate,ac_wsp,wspd_pbl
 
   ! dd specific internal variables
         real(kind_phys):: radflux, f0, wstar_rad, dz_ent
@@ -8041,36 +8036,35 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
    sd_awv     =zero
    sd_awqke   =zero
 
-  ! determine maximum downdraft width and increments
-   maxdd2     =min(maxddd, 1.2*dx)
-   dl         =max(maxdd2-minddd, zero)/real(ndd-1)
-
-  ! first, check for stratocumulus-topped pbl with cooling at the cloud top.
+   ! first, check for stratocumulus-topped pbl with cooling at the cloud top.
    cloudflg   =.false.
    singlelayer=.false.
    qltop      =1     !initialize
    qlbase     =1     !initialize
-   do k = max(kmin+1,kpbl-2),kpbl+10
-      qx_k    =max(qt(k)  , qc_bl1(k)  +qi_bl1(k))   !total clouds at k
-      qx_km1  =max(qt(k-1), qc_bl1(k-1)+qi_bl1(k-1)) !total clouds at k-1
-!      if (qx_k  .lt. 1.e-6 .and. cldfra_bl(k-1).lt.0.1 .and. &
-!          qx_km1.gt. 1.e-6 .and. cldfra_bl(k)  .gt.0.5 .and. &
-      !---------------------------------criteria for downdraft activation
-      if ((cldfra_bl1(k-1).gt.0.5       ) .and. & !1) stratocumulus exists
-!          (cldfra_bl1(k)  .lt.0.1       ) .and. & !2) clear above
-          (rthraten(k-1) .lt. -0.000025)  .and. & !3) radiative cooling
-          (           dl .gt.zero       )) then   !4) widest downdraft > thinnest
-         cloudflg =.true. ! found sc cloud
-         qltop    =k-1    ! index for sc cloud top
+   crate      =zero
+   do k = max(kmin+1,kpbl-5),min(kpbl+20,kte-1)
+      !---------------------------------criteria for downdraft activation:
+      if ((cldfra_bl1(k-1).gt.0.5       ) .and. &   !1) stratocumulus exists
+          (rthraten(k-1)  .lt.ct_cooling)) then     !2) significant radiative cooling
+         ! found sc cloud with significant radiative cooling
+         cloudflg =.true.
+         qltop    =k-1               ! index for sc cloud top
          cftop    =cldfra_bl1(k-1)
+         crate    =min(crate, rthraten(k-1))  !maximum cooling rate at cloud top
          if (cldfra_bl1(k-2).lt.0.1)singlelayer=.true.
       endif
    enddo
 
-   !found sc cloud, trigger downdrafts
-   if (cloudflg) then
+   ! determine maximum downdraft width and increments
+   maxdd2     =min(maxddd, 1.2*dx)                  !1) grid-scale dependence
+   maxdd2     =min(maxdd2, -1212121.*crate -30.)    !2) function of cloud top cooling rate
+   maxdd2     =min(maxdd2, p5*zw(qltop+1))          !3) limited for low cloud-top heights
+   dl         =max(maxdd2-minddd, zero)/real(ndd-1)
+   
+   !found sc cloud with conditions for downdrafts; compute downdrafts
+   if (cloudflg .and. ( dl .gt. zero)) then
       do k = qltop, kts, -1
-         qx_k    =max(qt(k)  , qc_bl1(k) +qi_bl1(k))   !total clouds at k
+         qx_k =max(qt(k), qc_bl1(k) +qi_bl1(k))     !total cloud water and ice at k
          if (qx_k .gt. 1e-6) then
             qlbase = k ! index for sc cloud base
          endif
@@ -8088,25 +8082,25 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
          radflux = radflux * cp / grav * ( p(k) - p(k+1) ) ! converts k/s to w/m^2
          if ( radflux < zero ) f0 = abs(radflux) + f0
       enddo
-      f0 = min(max(f0, 1.0_kind_phys), 200._kind_phys)  !total radiative cooling (w/m2)
+      f0 = min(max(f0, one), 200._kind_phys)  !total radiative cooling (w/m2)
 
       !allow the total fractional area of the downdrafts (add) to be proportional
       !to the radiative forcing:
-      !for  50 w/m2, add = 0.20
-      !for 100 w/m2, add = 0.30
-      !for 150 w/m2, add = 0.40
-      add = min( 0.1 + f0*0.002, 0.3_kind_phys)
+      !for  50 w/m2, add = 0.10
+      !for 100 w/m2, add = 0.20
+      !for 150 w/m2, add = 0.30
+      add = min( f0*0.002, 0.3_kind_phys)
       !taper off area for high wind speeds
       wspd_pbl=SQRT(MAX(u(kts)**2 + v(kts)**2, 0.01_kind_phys))
       if (wspd_pbl .le. 10.) then
          ac_wsp = one
       else
-         ac_wsp = one - min((wspd_pbl - 10.0)/15., 1.0_kind_phys)
+         ac_wsp = one - min((wspd_pbl - 10.0)/15., one)
       endif
       add  = add * ac_wsp
 
       !find inversion strength across cloud top entrainment zone--normalized to 200 m vertical grid spacing
-      dz_ent      = 0.5 * (dz(qltop+1) + dz(qltop))
+      dz_ent      = p5 * (dz(qltop+1) + dz(qltop))
       jump_thv    = (thv(qltop+1) - thv(qltop)) / dz_ent * dz200
       jump_qt     = (qt(qltop+1)  - qt(qltop))	/ dz_ent * dz200
       jump_thetal = (thl(qltop+1) - thl(qltop))	/ dz_ent * dz200
@@ -8149,17 +8143,17 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
       endif
 
       ! w* from radiative forcing
-      !wstar_rad = ( grav * dz_ent * f0 / (refthl * rho(ki) * cp) ) **p333
-      wstar_rad = 10.* ( grav*dz200 * f0 / (refthl * rho(ki) * cp) ) **p333
-      wstar_rad = min(max(wstar_rad, 0.1), 3.0)
+      !wstar_rad =    ( grav * dz_ent * f0 / (refthl * rho(ki) * cp) ) **p333
+      wstar_rad = 1.25 * ( grav*dz200 * f0 / (refthl * rho(ki) * cp) ) **p333
+      wstar_rad = min(max(wstar_rad, p1), three)
       ! note: since dz_ent cancels, went is not a function of dz_ent
       !went      = thv(1) / ( grav * jump_thv * dz_ent ) * &
       went      = thv(1) / ( grav * jump_thv * dz200 ) * &
-                  (0.5 * wstar_rad**3 )
+                  (p5 * wstar_rad**3 )
       qstar     = abs(went*jump_qt/wstar_rad)
       thstar    = f0/rho(ki)/cp/wstar_rad - went*jump_thv/wstar_rad
 
-      sigmaw    = 0.3 * wstar_rad ! 0.8*wstar_rad ! tuning parameter ! 0.5 was good
+      sigmaw    = 0.2 * wstar_rad ! 0.8*wstar_rad ! tuning parameter ! 0.5 was good
       sigmaqt   = 40. * qstar  ! 50 was good
       sigmath   = 1.0 * thstar ! 0.5 was good
 
@@ -8194,7 +8188,7 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
          print*,"found conditions for downdraft mixing"
          print*,"qltop=",qltop," qlbase=",qlbase
          print*,"qstar=",qstar," thstar=",thstar," went=",went
-         print*,"f0=",f0," jump_thv=",jump_thv
+         print*,"f0=",f0," jump_thv=",jump_thv,"w*rad=",wstar_rad
          print*,"u*=",ust," jump_qt=",jump_qt," fltv=",fltv
          print*,"grav=",grav," pblh=",pblh," thv(1)=",thv(1)
          print*,"p(1)=",p(1)," jump_thetal=",jump_thetal
@@ -8250,8 +8244,9 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
             !entrainment from tian and kuang (2016), with constraints
             wmin = p1 + ddd*0.0005
             !ent(k,i) = 0.33/(min(max(abs(downw(k+1,i)),wmin),0.9)*ddd)
-            ent(k,i) = 0.53/(min(max(abs(downw(k+1,i)),wmin),0.6)*ddd)
-
+            !ent(k,i) = 0.53/(min(max(abs(downw(k+1,i)),wmin),0.6)*ddd)
+            ent(k,i) = 0.26/(min(max(abs(downw(k+1,i)),wmin),0.6)*ddd)
+            
             !minimum background entrainment and 1/z enhancement near surface
             ent(k,i) = max(ent(k,i),0.0003)
             ent(k,i) = max(ent(k,i),0.06/zw(k))
