@@ -105,11 +105,11 @@
                   bl_mynn_tkeadvect , tke_budget        , bl_mynn_cloudpdf   , bl_mynn_mixlength  , &
                   bl_mynn_closure   , bl_mynn_edmf      , bl_mynn_edmf_mom   , bl_mynn_edmf_tke   , &
                   bl_mynn_output    , bl_mynn_mixscalars, bl_mynn_mixaerosols, bl_mynn_mixnumcon  , &
-                  bl_mynn_cloudmix  , bl_mynn_mixqt     , bl_mynn_edmf_dd    , bl_mynn_mss        , &
+                  bl_mynn_cloudmix  , bl_mynn_mixqt     , bl_mynn_edmf_dd    , bl_mynn_ess          &
 #if(WRF_CHEM == 1)
-                  mix_chem          , chem3d            , vd3d               , nchem              , &
-                  kdvel             , ndvel             , num_vert_mix                            , &
-!                  frp_mean          , emis_ant_no       , enh_mix                                ,  & !to be included soon
+                  ,mix_chem         , chem3d            , vd3d               , nchem              , &
+                  kdvel             , ndvel             , num_vert_mix                              &
+!                  frp_mean          , emis_ant_no       , enh_mix                                   & !to be included soon
 #endif            
                   sf_urban_physics  , frc_urb2d         , a_u_bep            , a_v_bep            , & ! BEP Changes
                   a_t_bep           , a_q_bep           , a_e_bep                                 , &
@@ -132,15 +132,11 @@
  logical, intent(in) :: mix_chem
  integer, intent(in) :: nchem, ndvel, kdvel, num_vert_mix
  logical, parameter ::                                  &
-         rrfs_sd    =.false.,                           &
-         smoke_dbg  =.false.,                           &
          enh_mix    =.false.
 #else
  logical, parameter ::                                  &
          mix_chem   =.false.,                           &
-         enh_mix    =.false.,                           &
-         rrfs_sd    =.false.,                           &
-         smoke_dbg  =.false.
+         enh_mix    =.false.
  integer, parameter :: nchem=2, ndvel=2, kdvel=1,       &
           num_vert_mix = 1
 #endif
@@ -163,7 +159,7 @@
          bl_mynn_mixscalars,                            &
          bl_mynn_mixaerosols,                           &
          bl_mynn_mixnumcon,                             &
-         bl_mynn_mss,                                   &
+         bl_mynn_ess,                                   &
          spp_pbl,                                       &
          tke_budget
  real(kind_phys), intent(in) ::                         &
@@ -248,11 +244,11 @@ integer, intent(in), optional :: sf_urban_physics ! BEP Changes
 #if (WRF_CHEM == 1)
  real(kind_phys), dimension(ims:ime,kms:kme,jms:jme,nchem), intent(inout) :: chem3d
  real(kind_phys), dimension(ims:ime,kdvel,jms:jme, ndvel),  intent(in)    :: vd3d
- real(kind_phys), dimension(kms:kme,nchem)  :: chem
+ real(kind_phys), dimension(kms:kme,nchem)  :: chem, settle1
  real(kind_phys), dimension(ndvel)          :: vd
  real(kind_phys), dimension(ims:ime,jms:jme):: frp_mean, emis_ant_no
 #else
- real(kind_phys), dimension(kms:kme,nchem)  :: chem
+ real(kind_phys), dimension(kms:kme,nchem)  :: chem, settle1
  real(kind_phys), dimension(ndvel)          :: vd
  real(kind_phys), dimension(ims:ime,jms:jme):: frp_mean, emis_ant_no
 #endif
@@ -419,7 +415,6 @@ integer, intent(in), optional :: sf_urban_physics ! BEP Changes
          excess_h1      = excess_h(i,j)
          excess_q1      = excess_q(i,j)
       endif
-      
       !check for unearthly incoming surface fluxes. These values are only surpassed
       !when the model is on the brink of crashing. If these limits are being surpassed,
       !conservation is already questionable, something is wrong somewhere in the
@@ -579,6 +574,7 @@ integer, intent(in), optional :: sf_urban_physics ! BEP Changes
          do n=1,nchem
          do k=kts,kte
             chem(k,n)=chem3d(i,k,j,n)
+            settle1(k,n)=0.0
          enddo
          enddo
 
@@ -591,6 +587,7 @@ integer, intent(in), optional :: sf_urban_physics ! BEP Changes
       emis_ant_no = 0.0
 #else
       chem        = 0.0
+      settle1     = 0.0
       vd          = 0.0
       frp_mean    = 0.0
       emis_ant_no = 0.0
@@ -651,10 +648,9 @@ integer, intent(in), optional :: sf_urban_physics ! BEP Changes
             flag_qnwfa      = flag_qnwfa    , flag_qnifa  = flag_qnifa    , flag_qnbca  = flag_qnbca   , &
             pattern_spp_pbl1= pattern_spp_pbl1, scalars   = scalars       , nscalars    = nscalars     , &
 !#if(WRF_CHEM == 1)
-            mix_chem        = mix_chem      , enh_mix     = enh_mix       , rrfs_sd     = rrfs_sd      , &
-            smoke_dbg       = smoke_dbg     , nchem       = nchem         , kdvel       = kdvel        , &
-            ndvel           = ndvel         , chem        = chem          , emis_ant_no = emis1        , &
-            frp             = frp1          , vdep        = vd                                         , &
+            mix_chem        = mix_chem      , enh_mix     = enh_mix       , nchem       = nchem        , &
+            ndvel           = ndvel         , chem1       = chem          , emis_ant_no = emis1        , &
+            frp             = frp1          , vdep        = vd            , settle1     = settle1      , &
    !#endif
 ! ! ! if(sf_urban_physics>=2)
             sf_urban_physics=sf_urban_physics                             , frc_urb     = frc_urb      , &   ! BEP Changes
@@ -679,7 +675,7 @@ integer, intent(in), optional :: sf_urban_physics ! BEP Changes
             bl_mynn_output     = bl_mynn_output       , &
             bl_mynn_cloudmix   = bl_mynn_cloudmix     , &
             bl_mynn_mixqt      = bl_mynn_mixqt        , &
-            bl_mynn_mss        = bl_mynn_mss          , &
+            bl_mynn_ess        = bl_mynn_ess          , &
             icloud_bl          = icloud_bl            , &
             spp_pbl            = spp_pbl              , &
             kts = kts , kte = kte , errmsg = errmsg , errflg = errflg )
