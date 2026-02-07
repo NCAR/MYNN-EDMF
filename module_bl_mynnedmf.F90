@@ -4327,7 +4327,7 @@ END IF
 
     DO k=kts+1,kte-1
        a(k)=   - dtz(k)*kmdz(k)*sf1D(k)*rhoinv(k)/vl1D(k) 
-       b(k)=one+ dtz(k)*(kmdz(k)*sf1D(k)+kmdz(k+1)sf1D(k+1))*rhoinv(k)/vl1D(k) &
+       b(k)=one+ dtz(k)*(kmdz(k)*sf1D(k)+kmdz(k+1)*sf1D(k+1))*rhoinv(k)/vl1D(k) &
            &   - a_u1D(k)*delt                              ! BEP Changes
        c(k)=   - dtz(k)*kmdz(k+1)*sf1D(k+1)*rhoinv(k)/vl1D(k)
        d(k)=u(k) -dtz(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k)) &
