@@ -3349,14 +3349,14 @@ if (bl_mynn_edmf > 1) then
 
     k=kts
     a(1)=zero
-    b(1)=one + dtz(k)*kqdz(k+1)*rhoinv(k)*(sf1D(k+1)+sf1D(k))/vl1D(k) + bp(k)*delt ! BEP Changes
-    c(1)=    - dtz(k)*kqdz(k+1)*rhoinv(k)*sf1D(k+1)/vl1D(k)
+    b(1)=one + dtz(k)*kqdz(k+1)*sf1D(k+1)*rhoinv(k)/vl1D(k) + bp(k)*delt ! BEP Changes
+    c(1)=    - dtz(k)*kqdz(k+1)*sf1D(k+1)*rhoinv(k)/vl1D(k)
     d(1)=max(qkemin, qke(k)) + rp(k)*delt                        &
         &    - dtz(k)*(upcont(k+1)+dncont(k+1))
 
     DO k=kts+1,kte-1
        a(k)=   - dtz(k)*kqdz(k)*rhoinv(k) * sf1D(k)/vl1D(k)                           ! BEP Changes
-       b(k)=one+ dtz(k)*(kqdz(k)+kqdz(k+1))*rhoinv(k)*(sf1D(k+1)+sf1D(k))/vl1D(k) &
+       b(k)=one+ dtz(k)*(kqdz(k)*sf1D(k)+kqdz(k+1)*sf1D(k+1))*rhoinv(k)/vl1D(k) &
           &    + bp(k)*delt - a_e1D(k)*delt                                           ! BEP Changes
        c(k)=   - dtz(k)*kqdz(k+1)*rhoinv(k)*sf1D(k+1)/vl1D(k)                         ! BEP Changes
        d(k)=max(qkemin, qke(k)) + rp(k)*delt                     &
@@ -3372,8 +3372,8 @@ else !implicit
 !JOE 8/22/20 improve conservation
       a(k)=   - dtz(k)*kqdz(k)*rhoinv(k)                         &
           &   + 0.5*dtz(k)*rhoinv(k)*s_aw1(k)*onoff * sf1D(k)/vl1D(k)        ! BEP Changes
-      b(k)=1. + dtz(k)*(kqdz(k)+kqdz(k+1))*rhoinv(k)             &
-          &     *(sf1D(k+1)+sf1D(k))/vl1D(k)                     & ! BEP Changes
+      b(k)=1. + dtz(k)*(kqdz(k)*sf1D(k)+kqdz(k+1)*sf1D(k+1))*rhoinv(k)   &
+          &     /vl1D(k)                                         & ! BEP Changes
           &   + 0.5*dtz(k)*rhoinv(k)*(s_aw1(k)-s_aw1(k+1))*onoff &
           &   + bp(k)*delt - a_e1D(k)*delt                           ! BEP Changes
       c(k)=   - dtz(k)*kqdz(k+1)*rhoinv(k)*sf1D(k+1)/vl1D(k)     &
@@ -4319,17 +4319,17 @@ END IF
 
     k=kts
     a(1)=zero
-    b(1)=one + dtz(k)*(kmdz(k+1)+rhosfc*ust*ustovwsp)*rhoinv(k)    &
-    &        * (sf1D(k+1)+sf1D(k))/vl1D(k) - a_u1D(k)*delt ! BEP Changes 
-    c(1)=    - dtz(k)*kmdz(k+1)*rhoinv(k)
+    b(1)=one + dtz(k)*(kmdz(k+1)*sf1D(k+1)+rhosfc*ust*ustovwsp)*rhoinv(k)/vl1D(k)     &
+            &        - a_u1D(k)*delt                                 ! BEP Changes 
+    c(1)=    - dtz(k)*kmdz(k+1)*sf1D(k+1)*rhoinv(k)/vl1D(k)
     d(1)=u(k)+ dtz(k)*uoce*ust**2/wspd*rho(k)                      &
              - dtz(k)*(upcont(k+1)+dncont(k+1))
 
     DO k=kts+1,kte-1
-       a(k)=   - dtz(k)*kmdz(k)*rhoinv(k)*sf1D(k)/vl1D(k) 
-       b(k)=one+ dtz(k)*(kmdz(k)+kmdz(k+1))*rhoinv(k)*(sf1D(k+1)+sf1D(k))/vl1D(k) &
-           &   - a_u1D(k)*delt ! BEP Changes
-       c(k)=   - dtz(k)*kmdz(k+1)*rhoinv(k)*sf1D(k+1)/vl1D(k)
+       a(k)=   - dtz(k)*kmdz(k)*sf1D(k)*rhoinv(k)/vl1D(k) 
+       b(k)=one+ dtz(k)*(kmdz(k)*sf1D(k)+kmdz(k+1)sf1D(k+1))*rhoinv(k)/vl1D(k) &
+           &   - a_u1D(k)*delt                              ! BEP Changes
+       c(k)=   - dtz(k)*kmdz(k+1)*sf1D(k+1)*rhoinv(k)/vl1D(k)
        d(k)=u(k) -dtz(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k)) &
            &  + sub_u(k)*delt + det_u(k)*delt+b_u1D(k)*delt ! BEP Changes
     ENDDO
@@ -4339,10 +4339,10 @@ END IF
     k=kts
     !rho-weighted (drag in b-vector):
     a(k)=  -dtz(k)*kmdz(k)*rhoinv(k)*sf1D(k)/vl1D(k)
-    b(k)=one+dtz(k)*(kmdz(k+1)+rhosfc*ust*ustovwsp)*rhoinv(k)      &
-           & * (sf1D(k+1)+sf1D(k))/vl1D(k)                         &
+    b(k)=one+dtz(k)*(kmdz(k+1)*(sf1D(k+1)+rhosfc*ust*ustovwsp)*rhoinv(k)      &
+           & /vl1D(k)                                              &
            & - p5*dtz(k)*rhoinv(k)*s_aw1(k+1)*onoff                &
-           & - p5*dtz(k)*rhoinv(k)*sd_aw1(k+1)*onoff-a_u1D(k)*delt  ! BEP Changes
+           & - p5*dtz(k)*rhoinv(k)*sd_aw1(k+1)*onoff-a_u1D(k)*delt   ! BEP Changes
     c(k)=  -dtz(k)*kmdz(k+1)*rhoinv(k)*sf1D(k+1)/vl1D(k)           &
            & - p5*dtz(k)*rhoinv(k)*s_aw1(k+1)*onoff                &
            & - p5*dtz(k)*rhoinv(k)*sd_aw1(k+1)*onoff
@@ -4355,7 +4355,7 @@ END IF
        a(k)=  -dtz(k)*kmdz(k)*rhoinv(k)*sf1D(k)/vl1D(k)            &
            &  + p5*dtz(k)*rhoinv(k)*s_aw1(k)*onoff                 &
            &  + p5*dtz(k)*rhoinv(k)*sd_aw1(k)*onoff
-       b(k)=one+ dtz(k)*(kmdz(k)+kmdz(k+1))*rhoinv(k)*(sf1D(k+1)+sf1D(k))/vl1D(k) &
+       b(k)=one+ dtz(k)*(kmdz(k)*sf1D(k)+kmdz(k+1)*sf1D(k+1))*rhoinv(k)/vl1D(k) &
            &  + p5*dtz(k)*rhoinv(k)*(s_aw1(k)-s_aw1(k+1))*onoff    &
            &  + p5*dtz(k)*rhoinv(k)*(sd_aw1(k)-sd_aw1(k+1))*onoff  &
            &  - a_u1D(k)*delt                                        ! BEP Changes
@@ -4414,17 +4414,17 @@ END IF
 
     k=kts
     a(1)=zero
-    b(1)=one + dtz(k)*(kmdz(k+1)+rhosfc*ust*ustovwsp)*rhoinv(k)*(sf1D(k+1)+sf1D(k))/vl1D(k) &
-          &  - a_v1D(k)*delt   ! BEP Changes
-    c(1)=    - dtz(k)*kmdz(k+1)*rhoinv(k)
+    b(1)=one + dtz(k)*(kmdz(k+1)*sf1D(k+1)+rhosfc*ust*ustovwsp)*rhoinv(k)/vl1D(k) &
+          &  - a_v1D(k)*delt                                         ! BEP Changes
+    c(1)=    - dtz(k)*kmdz(k+1)*sf1D(k+1)*rhoinv(k)/vl1D(k)
     d(1)=v(k)+ dtz(k)*voce*ust**2/wspd*rho(k)                      &
              - dtz(k)*(upcont(k+1)+dncont(k+1))
 
     DO k=kts+1,kte-1
        a(k)=   - dtz(k)*kmdz(k)*rhoinv(k)*sf1D(k)/vl1D(k)
-       b(k)=one+ dtz(k)*(kmdz(k)+kmdz(k+1))*rhoinv(k)*(sf1D(k+1)+sf1D(k))/vl1D(k) &
+       b(k)=one+ dtz(k)*(kmdz(k)*sf1D(k)+kmdz(k+1)*sf1D(k+1))*rhoinv(k)/vl1D(k) &
            &   - a_v1D(k)*delt
-       c(k)=   - dtz(k)*kmdz(k+1)*rhoinv(k)
+       c(k)=   - dtz(k)*kmdz(k+1)*sf1D(k+1)*rhoinv(k)/vl1D(k)
        d(k)=v(k) -dtz(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k)) &
            &  + sub_v(k)*delt + det_v(k)*delt + b_v1D(k)*delt                   ! BEP Changes
     ENDDO
@@ -4434,12 +4434,12 @@ END IF
     k=kts
     !rho-weighted (drag in b-vector):
     a(k)=  -dtz(k)*kmdz(k)*rhoinv(k)*sf1D(k)/vl1D(k)
-    b(k)=one+dtz(k)*(kmdz(k+1) + rhosfc*ust**2/wspd)*rhoinv(k)    &
-        &  * (sf1D(k+1)+sf1D(k))/vl1D(k)                          &
+    b(k)=one+dtz(k)*(kmdz(k+1)*sf1D(k+1) + rhosfc*ust**2/wspd)*rhoinv(k)    &
+        &  /vl1D(k)                          &
         &  - p5*dtz(k)*rhoinv(k)*s_aw1(k+1)*onoff                 &
         &  - p5*dtz(k)*rhoinv(k)*sd_aw1(k+1)*onoff                &
         &  - a_v1D(k)*delt                                          ! BEP Changes
-    c(k)=  -dtz(k)*kmdz(k+1)*rhoinv(k)*sf1D(k+1)/vl1D(k)          &
+    c(k)=  -dtz(k)*kmdz(k+1)*sf1D(k+1)*rhoinv(k)/vl1D(k)          &
         &  - p5*dtz(k)*rhoinv(k)*s_aw1(k+1)*onoff                 &
         &  - p5*dtz(k)*rhoinv(k)*sd_aw1(k+1)*onoff
     d(k)=v(k)  + dtz(k)*voce*ust**2/wspd                          &
@@ -4451,12 +4451,11 @@ END IF
        a(k)=  -dtz(k)*kmdz(k)*rhoinv(k)*sf1D(k)/vl1D(k)           &
          & + p5*dtz(k)*rhoinv(k)*s_aw1(k)*onoff                   &
          & + p5*dtz(k)*rhoinv(k)*sd_aw1(k)*onoff
-       b(k)=one+dtz(k)*(kmdz(k)+kmdz(k+1))*rhoinv(k)              &
-         & * (sf1D(k+1)+sf1D(k))/vl1D(k)                          &
+       b(k)=one+dtz(k)*(kmdz(k)*sf1D(k)+kmdz(k+1)*sf1D(k+1))*rhoinv(k)/vl1D(k)  &
          & + p5*dtz(k)*rhoinv(k)*(s_aw1(k)-s_aw1(k+1))*onoff      &
          & + p5*dtz(k)*rhoinv(k)*(sd_aw1(k)-sd_aw1(k+1))*onoff    &
          & - a_v1D(k)*delt                                          ! BEP Changes
-       c(k)=  -dtz(k)*kmdz(k+1)*rhoinv(k)*sf1D(k+1)/vl1D(k)       &
+       c(k)=  -dtz(k)*kmdz(k+1)*sf1D(k+1)*rhoinv(k)/vl1D(k)       &
          & - p5*dtz(k)*rhoinv(k)*s_aw1(k+1)*onoff                 &
          & - p5*dtz(k)*rhoinv(k)*sd_aw1(k+1)*onoff
        d(k)=v(k) + dtz(k)*rhoinv(k)*(s_awv1(k)-s_awv1(k+1))*onoff &
@@ -4508,18 +4507,18 @@ END IF
 
     k=kts
     a(1)=zero
-    b(1)=one + dtz(k)*khdz(k+1)*rhoinv(k)*(sf1D(k+1)+sf1D(k))/vl1D(k)
-    c(1)=    - dtz(k)*khdz(k+1)*rhoinv(k)*sf1D(k+1)/vl1D(k)
+    b(1)=one + dtz(k)*khdz(k+1)*sf1D(k+1)*rhoinv(k)/vl1D(k)
+    c(1)=    - dtz(k)*khdz(k+1)*sf1D(k+1)*rhoinv(k)/vl1D(k)
     d(1)=thl(k)+dtz(k)*rhosfc*flt*rhoinv(k) + tcd(k)*delt              &
          - dtz(k)*(upcont(k+1)+dncont(k+1))                            &
          + diss_heat(k)*delt + sub_thl(k)*delt + det_thl(k)*delt       &
          + b_t1D(k)*delt
 
     DO k=kts+1,kte-1
-       a(k)=   - dtz(k)*khdz(k)*rhoinv(k)*sf1D(k)
-       b(k)=one+ dtz(k)*(khdz(k)+khdz(k+1))*rhoinv(k)*(sf1D(k+1)+sf1D(k))/vl1D(k)&
-           &   - a_t1D(k)*delt       ! BEP Changes
-       c(k)=   - dtz(k)*khdz(k+1)*rhoinv(k)*sf1D(k+1)/vl1D(k)
+       a(k)=   - dtz(k)*khdz(k)*sf1D(k)*rhoinv(k)/vl1D(k)
+       b(k)=one+ dtz(k)*(khdz(k)+khdz(k+1))*sf1D(k+1)*rhoinv(k)/vl1D(k) &
+           &   - a_t1D(k)*delt                                            ! BEP Changes
+       c(k)=   - dtz(k)*khdz(k+1)*sf1D(k+1)*rhoinv(k)/vl1D(k)
        d(k)=thl(k)-dtz(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k)) &
            &  + diss_heat(k)*delt + sub_thl(k)*delt + det_thl(k)*delt   &
            &  + b_t1D(k)*delt                                             ! BEP Changes
@@ -4529,8 +4528,8 @@ END IF
     
     k=kts
 !rho-weighted: rhosfc*x*rhoinv(k)
-    a(k)=  -dtz(k)*khdz(k)*rhoinv(k)*sf1D(k)/vl1D(k)
-    b(k)=1.+dtz(k)*(khdz(k+1)+khdz(k))*rhoinv(k)*(sf1D(k+1)+sf1D(k))/vl1D(k) & ! BEP Changes
+    a(k)=  -dtz(k)*khdz(k)*sf1D(k)*rhoinv(k)/vl1D(k)
+    b(k)=1.+dtz(k)*(khdz(k+1)*sf1D(k+1)+khdz(k)*sf1D(k))*rhoinv(k)/vl1D(k) & ! BEP Changes
        &   - p5*dtz(k)*rhoinv(k)*s_aw1(k+1)                  &
        &   - p5*dtz(k)*rhoinv(k)*sd_aw1(k+1)                 
     c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k)*sf1D(k+1)/vl1D(k)     &
@@ -4547,12 +4546,12 @@ END IF
        a(k)= -dtz(k)*khdz(k)*rhoinv(k)*sf1D(k)/vl1D(k)       &
        &   + p5*dtz(k)*rhoinv(k)*s_aw1(k)                    &
        &   + p5*dtz(k)*rhoinv(k)*sd_aw1(k)
-       b(k)=1.+dtz(k)*(khdz(k)+khdz(k+1))*rhoinv(k)          &
-       &   * (sf1D(k+1)+sf1D(k))/vl1D(k)                     &
+       b(k)=1.+dtz(k)*(khdz(k)*sf1D(k)+khdz(k+1)*sf1D(k+1))*rhoinv(k) &
+       &   / vl1D(k)                     &
        &   + p5*dtz(k)*rhoinv(k)*(s_aw1(k)-s_aw1(k+1))       &
        &   + p5*dtz(k)*rhoinv(k)*(sd_aw1(k)-sd_aw1(k+1))     &
        &   - a_t1D(k)*delt                                     ! BEP Changes
-       c(k)= -dtz(k)*khdz(k+1)*rhoinv(k)*sf1D(k+1)/vl1D(k)   &
+       c(k)= -dtz(k)*khdz(k+1)*sf1D(k+1)*rhoinv(k)/vl1D(k)   &
        &   - p5*dtz(k)*rhoinv(k)*s_aw1(k+1)                  &
        &   - p5*dtz(k)*rhoinv(k)*sd_aw1(k+1)
        d(k)=thl(k) + tcd(k)*delt                             &
@@ -4612,17 +4611,17 @@ IF (bl_mynn_mixqt > 0) THEN
 
     k=kts
     a(1)=zero
-    b(1)=one + dtz(k)*khdz(k+1)*rhoinv(k)*(sf1D(k+1)+sf1D(k))/vl1D(k)
-    c(1)=    - dtz(k)*khdz(k+1)*rhoinv(k)*sf1D(k+1)/vl1D(k)
+    b(1)=one + dtz(k)*khdz(k+1)sf1D(k+1)*rhoinv(k)/vl1D(k)
+    c(1)=    - dtz(k)*khdz(k+1)*sf1D(k+1)*rhoinv(k)/vl1D(k)
     d(1)=sqw(k)+dtz(k)*rhosfc*flq*rhoinv(k) + qcd(k)*delt              &
          - dtz(k)*(upcont(k+1)+dncont(k+1))                            &
          + sub_sqv(k)*delt + det_sqv(k)*delt + b_q1D(k)*delt            ! BEP Changes 
 
     DO k=kts+1,kte-1
-       a(k)=   - dtz(k)*khdz(k)*rhoinv(k)*sf1D(k)/vl1D(k)
-       b(k)=one+ dtz(k)*(khdz(k)+khdz(k+1))*rhoinv(k)*(sf1D(k+1)+sf1D(k))/vl1D(k) &
+       a(k)=   - dtz(k)*khdz(k)*sf1D(k)*rhoinv(k)/vl1D(k)
+       b(k)=one+ dtz(k)*(khdz(k)sf1D(k)+khdz(k+1)sf1D(k+1))*rhoinv(k)/vl1D(k) &
            &  - a_q1D(k)*delt   ! BEP Changes  
-       c(k)=   - dtz(k)*khdz(k+1)*rhoinv(k)*sf1D(k+1)/vl1D(k)
+       c(k)=   - dtz(k)*khdz(k+1)*sf1D(k+1)*rhoinv(k)/vl1D(k)
        d(k)=sqw(k)-dtz(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k)) &
            &  + sub_sqv(k)*delt + det_sqv(k)*delt + b_q1D(k)*delt       ! BEP Changes
     ENDDO
@@ -4631,11 +4630,11 @@ IF (bl_mynn_mixqt > 0) THEN
 
     k=kts
     !rho-weighted:
-    a(k)=  -dtz(k)*khdz(k)*rhoinv(k)
-    b(k)=one+dtz(k)*(khdz(k+1)+khdz(k))*rhoinv(k)         &
+    a(k)=  -dtz(k)*khdz(k)*rhoinv(k)*sf1D(k)/vl1D(k)
+    b(k)=one+dtz(k)*(khdz(k+1)sf1D(k+1)+khdz(k)sf1D(k))*rhoinv(k)/vl1D(k)         &
        & - p5*dtz(k)*rhoinv(k)*s_aw1(k+1)                 &
        & - p5*dtz(k)*rhoinv(k)*sd_aw1(k+1)
-    c(k)=  -dtz(k)*khdz(k+1)*rhoinv(k)                    &
+    c(k)=  -dtz(k)*khdz(k+1)sf1D(k+1)*rhoinv(k)/vl1D(k)                    &
        & - p5*dtz(k)*rhoinv(k)*s_aw1(k+1)                 &
        & - p5*dtz(k)*rhoinv(k)*sd_aw1(k+1)
     d(k)=sqw(k)  + dtz(k)*rhosfc*flq*rhoinv(k) + qcd(k)*delt &
@@ -4646,8 +4645,8 @@ IF (bl_mynn_mixqt > 0) THEN
        a(k)=  -dtz(k)*khdz(k)*rhoinv(k)*sf1D(k)/vl1D(k)   &
        & + p5*dtz(k)*rhoinv(k)*s_aw1(k)                   &
        & + p5*dtz(k)*rhoinv(k)*sd_aw1(k)
-       b(k)=one+dtz(k)*(khdz(k)+khdz(k+1))*rhoinv(k)      &
-       & * (sf1D(k+1)+sf1D(k))/vl1D(k)                    &
+       b(k)=one+dtz(k)*(khdz(k)sf1D(k)+khdz(k+1)sf1D(k+1))*rhoinv(k)      &
+       & /vl1D(k)                    &
        & + p5*dtz(k)*rhoinv(k)*(s_aw1(k)-s_aw1(k+1))      &
        & + p5*dtz(k)*rhoinv(k)*(sd_aw1(k)-sd_aw1(k+1))    &
        & - a_q1D(k)*delt                                    ! BEP Changes
