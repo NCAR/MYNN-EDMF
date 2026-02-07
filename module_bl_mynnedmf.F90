@@ -4320,7 +4320,7 @@ END IF
     k=kts
     a(1)=zero
     b(1)=one + dtz(k)*(kmdz(k+1)*sf1D(k+1)+rhosfc*ust*ustovwsp)*rhoinv(k)/vl1D(k)     &
-            &        - a_u1D(k)*delt                                 ! BEP Changes 
+         &   - a_u1D(k)*delt                                           ! BEP Changes 
     c(1)=    - dtz(k)*kmdz(k+1)*sf1D(k+1)*rhoinv(k)/vl1D(k)
     d(1)=u(k)+ dtz(k)*uoce*ust**2/wspd*rho(k)                      &
              - dtz(k)*(upcont(k+1)+dncont(k+1))
@@ -4339,7 +4339,7 @@ END IF
     k=kts
     !rho-weighted (drag in b-vector):
     a(k)=  -dtz(k)*kmdz(k)*rhoinv(k)*sf1D(k)/vl1D(k)
-    b(k)=one+dtz(k)*(kmdz(k+1)*(sf1D(k+1)+rhosfc*ust*ustovwsp)*rhoinv(k)      &
+    b(k)=one+dtz(k)*(kmdz(k+1)*sf1D(k+1)+rhosfc*ust*ustovwsp)*rhoinv(k)      &
            & /vl1D(k)                                              &
            & - p5*dtz(k)*rhoinv(k)*s_aw1(k+1)*onoff                &
            & - p5*dtz(k)*rhoinv(k)*sd_aw1(k+1)*onoff-a_u1D(k)*delt   ! BEP Changes
