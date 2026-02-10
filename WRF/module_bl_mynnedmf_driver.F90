@@ -258,7 +258,7 @@ integer, intent(in), optional :: sf_urban_physics ! BEP Changes
  integer, parameter :: nscalars=1
  real(kind=kind_phys),dimension(kts:kte,nscalars):: scalars 
 
-! Urban (Optional) 1D Arrays
+! Urban 1D Arrays
  real(kind_phys), dimension(kts:kte) ::                                           & ! BEP Changes
          & a_u1D,a_v1D,a_t1D,a_q1D,a_e1D,b_u1D,b_v1D,b_t1D,b_q1D,b_e1D,           &
          & sf1D,vl1D,dl_u1D                                                         ! End changes
