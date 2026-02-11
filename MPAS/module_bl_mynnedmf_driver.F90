@@ -51,8 +51,13 @@
                   bl_mynn_edmf_tke  , bl_mynn_output    , bl_mynn_mixscalars , bl_mynn_mixaerosols, &
                   bl_mynn_mixnumcon , bl_mynn_cloudmix  , bl_mynn_mixqt      , bl_mynn_ess        , &
                   errmsg            , errflg                                                        &
-                 ,mix_chem, nchem, ndvel, chem3d, settle3d, vd3d, enh_mix, frp_mean, emis_ant_no    &
-               )
+                 ,mix_chem, nchem, ndvel, chem3d, settle3d, vd3d, enh_mix, frp_mean, emis_ant_no  , &
+                  sf_urban_physics  , frc_urb2d         , a_u_bep            , a_v_bep            , & ! BEP Changes
+                  a_t_bep           , a_q_bep           , a_e_bep                                 , &
+                  b_u_bep           , b_v_bep           , b_t_bep                                 , &
+                  b_q_bep           , b_e_bep           , dlg_bep           , dl_u_bep            , &
+                  sf_bep            , vl_bep                                                        ) ! End BEP Changes
+               
 
 !=================================================================================================================
 
@@ -125,6 +130,20 @@
     uoce,               &!
     voce,               &!
     znt                  !
+
+ real(kind_phys), intent(in), dimension(ims:ime,jms:jme), optional :: frc_urb2d ! BEP Changes
+ real(kind_phys)                                                   :: frc_urb   ! BEP Changes
+
+
+ real(kind_phys), dimension(ims:ime,kms:kme,jms:jme), optional ::                 & ! BEP Changes
+       & a_u_bep,a_v_bep,a_t_bep,a_q_bep,a_e_bep,                &
+       & b_u_bep,b_v_bep,b_t_bep,b_q_bep,b_e_bep,                &
+       & dlg_bep,dl_u_bep,sf_bep,vl_bep
+
+! Urban 1D Arrays
+ real(kind_phys), dimension(kts:kte) ::                                           & ! BEP Changes
+         & a_u1D,a_v1D,a_t1D,a_q1D,a_e1D,b_u1D,b_v1D,b_t1D,b_q1D,b_e1D,           &
+         & sf1D,vl1D,dl_u1D                                                         ! End changes
 
  real(kind=kind_phys),intent(in),dimension(ims:ime,kms:kme,jms:jme):: &
     dz,      &!
@@ -300,6 +319,23 @@
  errmsg = " "
  errflg = 0
 
+ !inintialize the urban arrays: ! BEP Changes
+ sf1D  =1.
+ vl1D  =1.
+ a_u1D =0.
+ a_v1D =0.
+ a_t1D =0.
+ a_q1D =0.
+ a_e1D =0.
+ b_u1D =0.
+ b_v1D =0.
+ b_t1D =0.
+ b_q1D =0.
+ b_e1D =0.
+ ! dlg1D =0.
+ dl_u1D=0. ! End changes
+
+
  do j = jts,jte
  do i = its,ite
      
@@ -450,6 +486,51 @@
        emisant_no1 = 0._kind_phys
     endif
     scalars     = 0.0
+    
+    if(sf_urban_physics > 1)then      ! BEP Changes JC (02/2026)
+      frc_urb=frc_urb2d(i,j)
+      !Update urban arrays with incoming information
+      do k=kts,kte
+         a_t1D(k)=a_t_bep(i,k,j)
+         b_t1D(k)=b_t_bep(i,k,j)
+         a_u1D(k)=a_u_bep(i,k,j)
+         b_u1D(k)=b_u_bep(i,k,j)
+         a_v1D(k)=a_v_bep(i,k,j)
+         b_v1D(k)=b_v_bep(i,k,j)
+         a_q1D(k)=a_q_bep(i,k,j)
+         b_q1D(k)=b_q_bep(i,k,j)
+         a_e1D(k)=a_e_bep(i,k,j)
+         b_e1D(k)=b_e_bep(i,k,j)
+         !!! dlg1D(k)=(zw(k)+zw(k+1))*0.5*(1.-frc_urb)+dlg_bep(i,k,j)*frc_urb ! Leave for calculation within MYNN
+         dl_u1D(k)=dl_u_bep(i,k,j)
+         if((1.-frc_urb).lt.1.)dl_u1D(k)=dl_u1D(k)/frc_urb
+         vl1D(k)=vl_bep(i,k,j)
+         sf1D(k)=sf_bep(i,k,j)
+      enddo
+   else
+      do k=kts,kte
+         a_t1D(k)=0.
+         b_t1D(k)=0.
+         a_u1D(k)=0.
+         b_u1D(k)=0.
+         a_v1D(k)=0.
+         b_v1D(k)=0.
+         a_q1D(k)=0.
+         b_q1D(k)=0.
+         a_e1D(k)=0.
+         b_e1D(k)=0.
+         ! dlg1D(k)=(zw(k)+zw(k+1))*0.5
+         dl_u1D(k)=0.
+         vl1D(k)=1.
+         sf1D(k)=1.
+      enddo
+      !b_t1D(1)=hfx(i,j)/dz1(1)/rho1(1)/cp
+      !b_q1D(1)=qfx(i,j)/dz1(1)/rho1(1)
+      !a_u1D(1)=(-ust(i,j)*ust(i,j)/dz1(1)/((u1(1)**2+v1(1)**2)**.5))
+      !a_v1D(1)=(-ust(i,j)*ust(i,j)/dz1(1)/((u1(1)**2+v1(1)**2)**.5))
+   endif
+          
+
 
     do k = kts,kte
        rqcblten1(k)   = 0._kind_phys
@@ -462,6 +543,8 @@
        rnwfablten1(k) = 0._kind_phys
        rnbcablten1(k) = 0._kind_phys
     enddo
+
+
 
     call mynnedmf( &
             i               = i             , j           = j             ,                              &
@@ -503,6 +586,12 @@
             ndvel           = ndvel         , chem1       = chem1         , emis_ant_no = emisant_no1  , &
             frp             = frp1          , vdep        = vd1           , settle1     = settle1      , &
             nscalars        = nscalars      , scalars     = scalars       ,                              &
+            sf_urban_physics=sf_urban_physics                             , frc_urb     = frc_urb      , &   ! BEP Changes
+            a_u1d            = a_u1d        , a_v1d       = a_v1d         , a_t1d       = a_t1d        , &
+            a_q1d            = a_q1d        , a_e1D       = a_e1D                                      , &
+            b_u1D            = b_u1d        , b_v1D       = b_v1d         , b_t1D       = b_t1d        , &
+            b_q1D            = b_q1d        , b_e1d       = b_e1d                                      , &
+            sf1D             = sf1d         , vl1D        = vl1d          , dl_u1D      = dl_u1D       , &   ! End Changes
             bl_mynn_tkeadvect  = bl_mynn_tkeadvect    , &
             tke_budget         = bl_mynn_tkebudget    , &
             bl_mynn_cloudpdf   = bl_mynn_cloudpdf     , &

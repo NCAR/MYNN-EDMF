@@ -105,13 +105,19 @@
                   bl_mynn_tkeadvect , tke_budget        , bl_mynn_cloudpdf   , bl_mynn_mixlength  , &
                   bl_mynn_closure   , bl_mynn_edmf      , bl_mynn_edmf_mom   , bl_mynn_edmf_tke   , &
                   bl_mynn_output    , bl_mynn_mixscalars, bl_mynn_mixaerosols, bl_mynn_mixnumcon  , &
-                  bl_mynn_cloudmix  , bl_mynn_mixqt     , bl_mynn_edmf_dd    , bl_mynn_ess          &
+                  bl_mynn_cloudmix  , bl_mynn_mixqt     , bl_mynn_edmf_dd    , bl_mynn_ess        , &
 #if(WRF_CHEM == 1)
-                  ,mix_chem         , chem3d            , vd3d               , nchem              , &
-                  kdvel             , ndvel             , num_vert_mix                              &
-!                  frp_mean          , emis_ant_no       , enh_mix                                   & !to be included soon
-#endif
-               )
+
+                  mix_chem          , chem3d            , vd3d               , nchem              , &
+                  kdvel             , ndvel             , num_vert_mix                            , &
+!                  frp_mean          , emis_ant_no       , enh_mix                                , & !to be included soon
+#endif            
+                  sf_urban_physics  , frc_urb2d         , a_u_bep            , a_v_bep            , & ! BEP Changes
+                  a_t_bep           , a_q_bep           , a_e_bep                                 , &
+                  b_u_bep           , b_v_bep           , b_t_bep                                 , &
+                  b_q_bep           , b_e_bep           , dlg_bep           , dl_u_bep            , &
+                  sf_bep            , vl_bep                                                        ) ! End BEP Changes
+
 
 
  use module_bl_mynnedmf, only: mynnedmf
@@ -180,6 +186,8 @@
             IMS,IME,JMS,JME,KMS,KME,                   &
             ITS,ITE,JTS,JTE,KTS,KTE
 
+integer, intent(in), optional :: sf_urban_physics ! BEP Changes
+
 !MYNN-3D
  real(kind_phys), dimension(ims:ime,kms:kme,jms:jme), intent(in) ::               &
        u,v,w,t3d,th,rho,exner,p,dz,rthraten
@@ -189,6 +197,9 @@
        qke, qke_adv, el_pbl, sh3d, sm3d, tsq, qsq, cov
  real(kind_phys), dimension(ims:ime,kms:kme,jms:jme), intent(inout) ::            &
        exch_h, exch_m
+
+ real(kind_phys), dimension(ims:ime,jms:jme), intent(in), optional :: frc_urb2d ! BEP Changes
+ real(kind_phys)                                                   :: frc_urb   ! BEP Changes
 
 !optional 3D arrays
  real(kind_phys), dimension(ims:ime,kms:kme,jms:jme), optional, intent(inout) ::  &
@@ -206,6 +217,11 @@
        dqke,qWT,qSHEAR,qBUOY,qDISS
  real(kind_phys), dimension(ims:ime,kms:kme,jms:jme), optional, intent(inout) ::  &
        qv,qc,qi,qs,qnc,qni,qnwfa,qnifa,qnbca!,o3
+
+ real(kind_phys), dimension(ims:ime,kms:kme,jms:jme), optional ::                 & ! BEP Changes
+       & a_u_bep,a_v_bep,a_t_bep,a_q_bep,a_e_bep,                &
+       & b_u_bep,b_v_bep,b_t_bep,b_q_bep,b_e_bep,                &
+       & dlg_bep,dl_u_bep,sf_bep,vl_bep
 
 !(non-optional) 1D arrays
  real(kind_phys), dimension(kts:kte) ::                                           &
@@ -242,6 +258,10 @@
  integer, parameter :: nscalars=1
  real(kind=kind_phys),dimension(kts:kte,nscalars):: scalars 
 
+! Urban 1D Arrays
+ real(kind_phys), dimension(kts:kte) ::                                           & ! BEP Changes
+         & a_u1D,a_v1D,a_t1D,a_q1D,a_e1D,b_u1D,b_v1D,b_t1D,b_q1D,b_e1D,           &
+         & sf1D,vl1D,dl_u1D                                                         ! End changes
 !MYNN-2D
  real(kind_phys), dimension(ims:ime,jms:jme), intent(in) ::                       &
        xland,ts,qsfc,ps,ch,hfx,qfx,ust,wspd,znt,                                  &
@@ -341,6 +361,21 @@
  dqnifa1          =0.0
  dqnbca1          =0.0
  dozone1          =0.0
+ !inintialize the urban arrays: ! BEP Changes
+ sf1D  =1.
+ vl1D  =1.
+ a_u1D =0.
+ a_v1D =0.
+ a_t1D =0.
+ a_q1D =0.
+ a_e1D =0.
+ b_u1D =0.
+ b_v1D =0.
+ b_t1D =0.
+ b_q1D =0.
+ b_e1D =0.
+ ! dlg1D =0.
+ dl_u1D=0. ! End changes
 
  !---------------------------------------
  !Begin looping in the i- and j-direction
@@ -491,6 +526,50 @@
             ozone1(k) = ozone(i,k,j)
          enddo
       endif
+
+      if(sf_urban_physics > 1)then                        ! BEP Changes
+            frc_urb=frc_urb2d(i,j)
+            !Update urban arrays with incoming information
+            do k=kts,kte
+               a_t1D(k)=a_t_bep(i,k,j)
+               b_t1D(k)=b_t_bep(i,k,j)
+               a_u1D(k)=a_u_bep(i,k,j)
+               b_u1D(k)=b_u_bep(i,k,j)
+               a_v1D(k)=a_v_bep(i,k,j)
+               b_v1D(k)=b_v_bep(i,k,j)
+               a_q1D(k)=a_q_bep(i,k,j)
+               b_q1D(k)=b_q_bep(i,k,j)
+               a_e1D(k)=a_e_bep(i,k,j)
+               b_e1D(k)=b_e_bep(i,k,j)
+               !!! dlg1D(k)=(zw(k)+zw(k+1))*0.5*(1.-frc_urb)+dlg_bep(i,k,j)*frc_urb ! Leave for calculation within MYNN
+               dl_u1D(k)=dl_u_bep(i,k,j)
+               if((1.-frc_urb).lt.1.)dl_u1D(k)=dl_u1D(k)/frc_urb
+               vl1D(k)=vl_bep(i,k,j)
+               sf1D(k)=sf_bep(i,k,j)
+            enddo
+          else
+            do k=kts,kte
+               a_t1D(k)=0.
+               b_t1D(k)=0.
+               a_u1D(k)=0.
+               b_u1D(k)=0.
+               a_v1D(k)=0.
+               b_v1D(k)=0.
+               a_q1D(k)=0.
+               b_q1D(k)=0.
+               a_e1D(k)=0.
+               b_e1D(k)=0.
+               ! dlg1D(k)=(zw(k)+zw(k+1))*0.5
+               dl_u1D(k)=0.
+               vl1D(k)=1.
+               sf1D(k)=1.
+            enddo
+            !b_t1D(1)=hfx(i,j)/dz1(1)/rho1(1)/cp
+            !b_q1D(1)=qfx(i,j)/dz1(1)/rho1(1)
+            !a_u1D(1)=(-ust(i,j)*ust(i,j)/dz1(1)/((u1(1)**2+v1(1)**2)**.5))
+            !a_v1D(1)=(-ust(i,j)*ust(i,j)/dz1(1)/((u1(1)**2+v1(1)**2)**.5))
+          endif
+          
 #if (WRF_CHEM == 1)
       if (mix_chem) then
          do n=1,nchem
@@ -573,7 +652,15 @@
             mix_chem        = mix_chem      , enh_mix     = enh_mix       , nchem       = nchem        , &
             ndvel           = ndvel         , chem1       = chem          , emis_ant_no = emis1        , &
             frp             = frp1          , vdep        = vd            , settle1     = settle1      , &
-!#endif
+   !#endif
+! ! ! if(sf_urban_physics>=2)
+            sf_urban_physics=sf_urban_physics                             , frc_urb     = frc_urb      , &   ! BEP Changes
+            a_u1d            = a_u1d        , a_v1d       = a_v1d         , a_t1d       = a_t1d        , &
+            a_q1d            = a_q1d        , a_e1D       = a_e1D                                      , &
+            b_u1D            = b_u1d        , b_v1D       = b_v1d         , b_t1D       = b_t1d        , &
+            b_q1D            = b_q1d        , b_e1d       = b_e1d                                      , &
+            sf1D             = sf1d         , vl1D        = vl1d          , dl_u1D      = dl_u1D       , &   ! End Changes
+! ! ! endif
             bl_mynn_tkeadvect  = bl_mynn_tkeadvect    , &
             tke_budget         = tke_budget           , &
             bl_mynn_cloudpdf   = bl_mynn_cloudpdf     , &
