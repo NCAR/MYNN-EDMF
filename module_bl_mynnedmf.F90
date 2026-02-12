@@ -802,6 +802,7 @@ CONTAINS
             &edmf_w1,edmf_a1,               &
             &edmf_w_dd1,edmf_a_dd1,         &
             &INITIALIZE_QKE,                &
+            &dl_u1D, dlg1D,                 & ! BEP Changes
             &spp_pbl,pattern_spp_pbl1       )
 
        IF (.not.restart) THEN
@@ -1133,6 +1134,7 @@ CONTAINS
             &edmf_w1,edmf_a1,                            &
             &edmf_w_dd1,edmf_a_dd1,                      &
             &TKEprod_dn,TKEprod_up,                      &
+            &dl_u1D, dlg1D,                              & ! BEP Changes
             &spp_pbl,pattern_spp_pbl1                    )
 
 !>  - Call mym_predict() to solve TKE and 
@@ -1394,6 +1396,7 @@ CONTAINS
        &            edmf_w1,edmf_a1,                          &
        &            edmf_w_dd1,edmf_a_dd1,                    &
        &            INITIALIZE_QKE,                           &
+       &            dl_u1D, dlg1D,                            & ! BEP Changes
        &            spp_pbl,pattern_spp_pbl1                  )
 !
 !-------------------------------------------------------------------
@@ -1422,6 +1425,9 @@ CONTAINS
     real(kind_phys), dimension(kts:kte) :: theta,thv
     real(kind_phys), dimension(kts:kte) :: pattern_spp_pbl1
     integer ::spp_pbl
+
+    real(kind_phys), dimension(kts:kte), optional, intent(in)   ::  & ! BEP Changes
+         dl_u1D,dlg1D
 
 !> - At first ql, vt and vq are set to zero.
     DO k = kts,kte
@@ -1495,6 +1501,7 @@ CONTAINS
             &            Psig_bl,cldfra_bl1,      &
             &            bl_mynn_mixlength,       &
             &            edmf_w1,edmf_a1,         &
+            &            dl_u1D, dlg1D,           &   ! BEP Changes
             &            edmf_w_dd1,edmf_a_dd1    )
 !
        DO k = kts+1,kte
@@ -1825,6 +1832,7 @@ CONTAINS
     &            Psig_bl, cldfra_bl1,          &
     &            bl_mynn_mixlength,            &
     &            edmf_w1,edmf_a1,              &
+    &            dl_u1D, dlg1D,                & ! BEP Changes
     &            edmf_w_dd1,edmf_a_dd1         )
     
 !-------------------------------------------------------------------
@@ -1882,6 +1890,9 @@ CONTAINS
            & PBLH_PLUS_ENT,Uonset,Ugrid,wt_u1,wt_u2,el_les,qkw_mf,     &
            & z_m,el_unstab,els1,alp3z,cpblh,wt_dx
     real(kind_phys), parameter :: ctau = 1000. !constant for tau_cloud
+    
+    real(kind_phys), dimension(kts:kte), optional, intent(in)   ::  & ! BEP Changes
+           & dl_u1D,dlg1D
 
 !    tv0 = 0.61*tref
 !    gtr = 9.81/tref
@@ -2088,6 +2099,14 @@ CONTAINS
            !non-squared blending:
            el_unstab = els/(one + (els1/elt))
            el(k)     = min(el_unstab, elb)
+
+           ! BEP Changes JC 02/2026
+           ! In presence of buildings, incorporate building eddy length
+           ! for l_meso
+           if ( dlg1D(k).gt.0.0 )
+               el(k) = el(k)*dl_u1D(k) / (el(k) + dl_u1D(k))
+           endif
+
            el(k)     = min(el(k), elf)  !elf can be smaller than elb in upper pbl
            if ((xland-1.5).GE.zero) then !hurricane tuning, over water only
               el(k)  = el(k)*wt_u1
@@ -2639,6 +2658,7 @@ CONTAINS
     &            edmf_w1,edmf_a1,                             &
     &            edmf_w_dd1,edmf_a_dd1,                       &
     &            TKEprod_dn,TKEprod_up,                       &
+    &            dl_u1D, dlg1D,                               & ! BEP Changes
     &            spp_pbl,pattern_spp_pbl1                     )
 
 !-------------------------------------------------------------------
@@ -2689,6 +2709,9 @@ CONTAINS
     DOUBLE PRECISION  q2sq, t2sq, r2sq, c2sq, elsq, gmel, ghel
     DOUBLE PRECISION  q3sq, t3sq, r3sq, c3sq, dlsq, qdiv
     DOUBLE PRECISION  e1, e2, e3, e4, enum, eden, wden
+
+    real(kind_phys), dimension(kts:kte), optional, intent(in)   ::  & ! BEP Changes
+           & dl_u1D,dlg1D 
 
 !   Stochastic
     integer,         intent(in)                   :: spp_pbl
@@ -2747,6 +2770,7 @@ CONTAINS
     &            Psig_bl, cldfra_bl1,           &
     &            bl_mynn_mixlength,             &
     &            edmf_w1,edmf_a1,               &
+    &            dl_u1D, dlg1D,                 & ! BEP Changes
     &            edmf_w_dd1,edmf_a_dd1          )
 !
 

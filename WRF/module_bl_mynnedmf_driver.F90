@@ -541,7 +541,7 @@ integer, intent(in), optional :: sf_urban_physics ! BEP Changes
                b_q1D(k)=b_q_bep(i,k,j)
                a_e1D(k)=a_e_bep(i,k,j)
                b_e1D(k)=b_e_bep(i,k,j)
-               !!! dlg1D(k)=(zw(k)+zw(k+1))*0.5*(1.-frc_urb)+dlg_bep(i,k,j)*frc_urb ! Leave for calculation within MYNN
+               dlg1D(k)= dlg_bep(i,k,j) 
                dl_u1D(k)=dl_u_bep(i,k,j)
                if((1.-frc_urb).lt.1.)dl_u1D(k)=dl_u1D(k)/frc_urb
                vl1D(k)=vl_bep(i,k,j)
