@@ -2103,7 +2103,7 @@ CONTAINS
            ! BEP Changes JC 02/2026
            ! In presence of buildings, incorporate building eddy length
            ! for l_meso
-           if ( dlg1D(k).gt.0.0 )
+           if ( dlg1D(k).gt.0.0 ) then
                el(k) = el(k)*dl_u1D(k) / (el(k) + dl_u1D(k))
            endif
 

@@ -261,7 +261,7 @@ integer, intent(in), optional :: sf_urban_physics ! BEP Changes
 ! Urban 1D Arrays
  real(kind_phys), dimension(kts:kte) ::                                           & ! BEP Changes
          & a_u1D,a_v1D,a_t1D,a_q1D,a_e1D,b_u1D,b_v1D,b_t1D,b_q1D,b_e1D,           &
-         & sf1D,vl1D,dl_u1D                                                         ! End changes
+         & sf1D,vl1D,dl_u1D, dlg1D                                                  ! End changes
 !MYNN-2D
  real(kind_phys), dimension(ims:ime,jms:jme), intent(in) ::                       &
        xland,ts,qsfc,ps,ch,hfx,qfx,ust,wspd,znt,                                  &
@@ -374,7 +374,7 @@ integer, intent(in), optional :: sf_urban_physics ! BEP Changes
  b_t1D =0.
  b_q1D =0.
  b_e1D =0.
- ! dlg1D =0.
+ dlg1D =0.
  dl_u1D=0. ! End changes
 
  !---------------------------------------
@@ -559,7 +559,7 @@ integer, intent(in), optional :: sf_urban_physics ! BEP Changes
                b_q1D(k)=0.
                a_e1D(k)=0.
                b_e1D(k)=0.
-               ! dlg1D(k)=(zw(k)+zw(k+1))*0.5
+               dlg1D(k)=0
                dl_u1D(k)=0.
                vl1D(k)=1.
                sf1D(k)=1.
