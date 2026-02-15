@@ -143,10 +143,10 @@
  integer,intent(in):: &
     bl_mynn_cloudpdf,   &!
     bl_mynn_mixlength,  &!
-    bl_mynn_stfunc,     &!
-    bl_mynn_topdown,    &!
-    bl_mynn_scaleaware, &!
-    bl_mynn_dheat_opt,  &!
+    bl_mynn_stfunc,     &!lara
+    bl_mynn_topdown,    &!lara
+    bl_mynn_scaleaware, &!lare
+    bl_mynn_dheat_opt,  &!lara
     bl_mynn_edmf,       &!
     bl_mynn_edmf_dd,    &!
     bl_mynn_edmf_mom,   &!
@@ -165,13 +165,13 @@
     icloud_bl,          &!
     spp_pbl              !
 
- real(kind=kind_phys),intent(in):: &
+ real(kind_phys),intent(in):: &
     bl_mynn_closure
 
- real(kind=kind_phys),intent(in):: &
+ real(kind_phys),intent(in):: &
     delt                 !
 
- real(kind=kind_phys),intent(in),dimension(ims:ime,jms:jme):: &
+ real(kind_phys),intent(in),dimension(ims:ime,jms:jme):: &
     dx,                 &!
     xland,              &!
     ps,                 &!
@@ -186,7 +186,7 @@
     voce,               &!
     znt                  !
 
- real(kind=kind_phys),intent(in),dimension(ims:ime,kms:kme,jms:jme):: &
+ real(kind_phys),intent(in),dimension(ims:ime,kms:kme,jms:jme):: &
     dz,      &!
     u,       &!
     w,       &!
@@ -199,7 +199,7 @@
     qv,      &!
     rthraten  !
 
- real(kind=kind_phys),intent(in),dimension(ims:ime,kms:kme,jms:jme),optional:: &
+ real(kind_phys),intent(in),dimension(ims:ime,kms:kme,jms:jme),optional:: &
     qc,      &!
     qi,      &!
     qs,      &!
@@ -210,7 +210,7 @@
     nwfa,    &!
     nbca
 
- real(kind=kind_phys),intent(in),dimension(ims:ime,kms:kme,jms:jme),optional:: &
+ real(kind_phys),intent(in),dimension(ims:ime,kms:kme,jms:jme),optional:: &
     pattern_spp   !
 
 
@@ -218,15 +218,15 @@
  integer,intent(inout),dimension(ims:ime,jms:jme):: &
     kpbl
 
- real(kind=kind_phys),intent(inout),dimension(ims:ime,jms:jme):: &
+ real(kind_phys),intent(inout),dimension(ims:ime,jms:jme):: &
     pblh          !
 
- real(kind=kind_phys),intent(inout),dimension(ims:ime,kms:kme,jms:jme):: &
+ real(kind_phys),intent(inout),dimension(ims:ime,kms:kme,jms:jme):: &
     cldfra_bl,   &!
     qc_bl,       &!
     qi_bl         !
 
- real(kind=kind_phys),intent(inout),dimension(ims:ime,kms:kme,jms:jme):: &
+ real(kind_phys),intent(inout),dimension(ims:ime,kms:kme,jms:jme):: &
     el_pbl,      &!
     qke,         &!
     qke_adv,     &!
@@ -236,13 +236,13 @@
     sh3d,        &!
     sm3d
 
- real(kind=kind_phys),intent(inout),dimension(ims:ime,kms:kme,jms:jme):: &
+ real(kind_phys),intent(inout),dimension(ims:ime,kms:kme,jms:jme):: &
     rublten,     &!
     rvblten,     &!
     rthblten,    &!
     rqvblten      !
 
- real(kind=kind_phys),intent(inout),dimension(ims:ime,kms:kme,jms:jme),optional:: &
+ real(kind_phys),intent(inout),dimension(ims:ime,kms:kme,jms:jme),optional:: &
     rqcblten,    &!
     rqiblten,    &!
     rqsblten,    &!
@@ -253,7 +253,7 @@
     rnwfablten,  &!
     rnbcablten    !
 
- real(kind=kind_phys),intent(inout),dimension(ims:ime,kms:kme,jms:jme),optional:: &
+ real(kind_phys),intent(inout),dimension(ims:ime,kms:kme,jms:jme),optional:: &
     edmf_a,      &!
     edmf_w,      &!
     edmf_qt,     &!
@@ -273,18 +273,18 @@
  integer,intent(out):: &
     errflg        ! output error flag (-).
 
- real(kind=kind_phys),intent(out),dimension(ims:ime,jms:jme):: &
+ real(kind_phys),intent(out),dimension(ims:ime,jms:jme):: &
     maxwidth,    &!
     maxmf,       &!
     ztop_plume,  &!
     excess_h,    &!
     excess_q
 
- real(kind=kind_phys),intent(out),dimension(ims:ime,kms:kme,jms:jme):: &
+ real(kind_phys),intent(out),dimension(ims:ime,kms:kme,jms:jme):: &
     exch_h,      &!
     exch_m        !
 
- real(kind=kind_phys),intent(out),dimension(ims:ime,kms:kme,jms:jme),optional:: &
+ real(kind_phys),intent(out),dimension(ims:ime,kms:kme,jms:jme),optional:: &
     dqke,        &!
     qwt,         &!
     qshear,      &!
@@ -295,64 +295,69 @@
  logical,intent(in):: mix_chem
  integer,intent(in):: nchem,ndvel
 
- real(kind=kind_phys),intent(in),dimension(ims:ime,jms:jme),optional:: frp_mean,emis_ant_no
- real(kind=kind_phys),intent(in),dimension(ims:ime,jms:jme,ndvel),optional:: vd3d
- real(kind=kind_phys),intent(inout),dimension(ims:ime,kms:kme,jms:jme,nchem),optional:: chem3d,settle3d
+ real(kind_phys),intent(in),dimension(ims:ime,jms:jme),optional:: frp_mean,emis_ant_no
+ real(kind_phys),intent(in),dimension(ims:ime,jms:jme,ndvel),optional:: vd3d
+ real(kind_phys),intent(inout),dimension(ims:ime,kms:kme,jms:jme,nchem),optional:: chem3d,settle3d
  logical,intent(in),optional:: enh_mix
 
- real(kind=kind_phys):: frp1,emisant_no1
- real(kind=kind_phys),dimension(ndvel):: vd1
- real(kind=kind_phys),dimension(kts:kte,nchem):: chem1,settle1
+ real(kind_phys):: frp1,emisant_no1
+ real(kind_phys),dimension(ndvel):: vd1
+ real(kind_phys),dimension(kts:kte,nchem):: chem1,settle1
 !generic scalar array support
  integer, parameter :: nscalars=1
- real(kind=kind_phys),dimension(kts:kte,nscalars):: scalars
- 
+ real(kind_phys),dimension(kts:kte,nscalars):: scalars
+
+!local
  integer:: i,k,j,ic
 
  integer:: kpbl1
 
- real(kind=kind_phys):: denom
-
- real(kind=kind_phys):: &
+ real(kind_phys):: &
     dx1,xland1,ps1,ts1,qsfc1,ust1,ch1,hfx1,qfx1, &
     wspd1,uoce1,voce1,znt1
 
- real(kind=kind_phys),dimension(kts:kte):: &
+ real(kind_phys),dimension(kts:kte):: &
     dz1,u1,v1,th1,tt1,p1,exner1,rho1,qv1,rthraten1
 
- real(kind=kind_phys),dimension(kts:kme):: &
+ real(kind_phys),dimension(kts:kme):: &
     w1
 
- real(kind=kind_phys),dimension(kts:kte):: &
+ real(kind_phys),dimension(kts:kte):: &
     qc1,qi1,qs1,nc1,ni1,nifa1,nwfa1,nbca1,qoz1
 
- real(kind=kind_phys),dimension(kts:kte):: &
+ real(kind_phys),dimension(kts:kte):: &
     pattern_spp1
 
- real(kind=kind_phys):: &
+ real(kind_phys):: &
     pblh1
 
- real(kind=kind_phys),dimension(kts:kte):: &
+ real(kind_phys),dimension(kts:kte):: &
     cldfrabl1,qcbl1,qibl1,elpbl1,qke1,qkeadv1,cov1,qsq1,tsq1,sh1,sm1
 
- real(kind=kind_phys),dimension(kts:kte):: &
+ real(kind_phys),dimension(kts:kte):: &
     rublten1,rvblten1,rthblten1,rqvblten1,rqcblten1,rqiblten1,rqsblten1, &
     rncblten1,rniblten1,rnifablten1,rnwfablten1,rnbcablten1,rqozblten1
 
- real(kind=kind_phys),dimension(kts:kte):: &
+ real(kind_phys),dimension(kts:kte):: &
     edmfa1,edmfw1,edmfqt1,edmfthl1,edmfent1,edmfqc1, &
     subthl1,subsqv1,detthl1,detsqv1
 
- real(kind=kind_phys):: &
+ real(kind_phys):: &
     maxwidth1,maxmf1,ztopplume1,excessh1,excessq1
 
- real(kind=kind_phys),dimension(kts:kte):: &
+ real(kind_phys),dimension(kts:kte):: &
     exchh1,exchm1,dqke1,qwt1,qshear1,qbuoy1,qdiss1
 
- real(kind=kind_phys),dimension(kts:kte):: &
+ real(kind_phys),dimension(kts:kte):: &
     sqv1,sqc1,sqi1,sqs1
 
 !-----------------------------------------------------------------------------------------------------------------
+ if (debug) then
+    write(0,*)"=============================================="
+    write(0,*)"in mynn-edmf driver..."
+    write(0,*)"initflag=",initflag," restart =",restart
+ endif
+
  errmsg = " "
  errflg = 0
 
@@ -765,7 +770,7 @@
 
  integer,intent(in):: kte
 
- real(kind=kind_phys),intent(in),dimension(1:kte):: &
+ real(kind_phys),intent(in),dimension(1:kte):: &
     qv,        &!
     qc,        &!
     qi,        &!
@@ -779,7 +784,7 @@
  integer,intent(out):: &
     errflg      ! output error flag (-).
 
- real(kind=kind_phys),intent(out),dimension(1:kte):: &
+ real(kind_phys),intent(out),dimension(1:kte):: &
     sqv,       &!
     sqc,       &!
     sqi,       &!
@@ -885,10 +890,10 @@
 
  integer,intent(in):: kte
 
- real(kind=kind_phys),intent(in):: &
+ real(kind_phys),intent(in):: &
     delt   !
 
- real(kind=kind_phys),intent(in),dimension(1:kte):: &
+ real(kind_phys),intent(in),dimension(1:kte):: &
     qv,   &!
     qc,   &!
     qi,   &!
@@ -896,7 +901,7 @@
 
 
 !--- inout arguments:
- real(kind=kind_phys),intent(inout),dimension(1:kte):: &
+ real(kind_phys),intent(inout),dimension(1:kte):: &
     dqv,  &!
     dqc,  &!
     dqi,  &!
@@ -911,8 +916,8 @@
 !--- local variables:
  integer:: k
  integer,parameter::kts=1
- real(kind=kind_phys):: rq,sq,tem
- real(kind=kind_phys),dimension(1:kte):: sqv,sqc,sqi,sqs
+ real(kind_phys):: rq,sq,tem
+ real(kind_phys),dimension(1:kte):: sqv,sqc,sqi,sqs
 
 !-----------------------------------------------------------------------------------------------------------------
 
