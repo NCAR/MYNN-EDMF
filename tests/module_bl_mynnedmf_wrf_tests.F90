@@ -422,7 +422,7 @@ module module_bl_mynnedmf_wrf_tests
                   qni=qni              , qnifa=qnifa         , qnwfa=qnwfa         , qnbca=qnbca        , &
 !                  qoz=qoz              ,                                                                  &
                   rthraten=rthraten    , pblh=pblh           , kpbl=kpbl           ,                      &
-                  cldfra_blcldfra_bl   , qc_bl=qc_bl         , qi_bl=qi_bl         , maxwidth=maxwidth  , &
+                  cldfra_bl=cldfra_bl  , qc_bl=qc_bl         , qi_bl=qi_bl         , maxwidth=maxwidth  , &
                   maxmf=maxmf          ,ztop_plume=ztop_plume, excess_h=excess_h   , excess_q=excess_h  , &
                   qke=qke              , qke_adv=qke_adv     ,                                            &
                   tsq=tsq              , qsq=qsq             , cov=cov             ,                      &
