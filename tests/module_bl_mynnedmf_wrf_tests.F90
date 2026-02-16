@@ -446,9 +446,9 @@ module module_bl_mynnedmf_wrf_tests
                   bl_mynn_cloudmix     = bl_mynn_cloudmix    , bl_mynn_mixqt       = bl_mynn_mixqt      , &
                   bl_mynn_edmf_dd      = bl_mynn_edmf_dd     , bl_mynn_ess         = bl_mynn_ess        , &
 !#if(WRF_CHEM == 1)
-                  mix_chem=mix_chem    , nchem=nchem         , ndvel=ndvel         , enh_mix=enh_mix    , &
-                  chem3d=chem3d        , settle3d=settle3d   , vd3d=vd3d           ,                      &
-                  frp_mean=frp_mean    , emis_ant_no=emis_ant_no                   ,                      &
+                  mix_chem=mix_chem    , nchem=nchem         , ndvel=ndvel         ,                      &
+!                  chem3d=chem3d        , settle3d=settle3d   , vd3d=vd3d           , enh_mix=enh_mix    , &
+!                  frp_mean=frp_mean    , emis_ant_no=emis_ant_no                   ,                      &
 !#endif
                   errmsg=errmsg        , errflg=errflg                                                    &
                   )
