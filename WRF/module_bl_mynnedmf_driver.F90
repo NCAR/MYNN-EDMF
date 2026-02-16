@@ -314,7 +314,8 @@
 
  real(kind_phys),dimension(ndvel):: vd1
  real(kind_phys),dimension(kts:kte,nchem):: chem1,settle1
-
+ real(kind_phys):: frp1,emis1
+ 
 !--Generic scalar array support (not yet connected to all model systems, but any new scalars that need to be mixed
 !  (locally and nonlocally) can be added to this generic array and will be mixed when bl_mynn_mixscalars=1.
  integer, parameter :: nscalars=1
@@ -363,8 +364,6 @@
 
  real(kind_phys),dimension(kts:kte):: &
     sqv1,sqc1,sqi1,sqs1
-
- real(kind_phys):: frp1,emis1
 
  real(kind_phys), dimension(kts:kte):: kzero
 
