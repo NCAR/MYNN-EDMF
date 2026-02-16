@@ -21,7 +21,7 @@ module module_bl_mynnedmf_wrf_tests
       flag_qnifa,            &     ! if true,the physics package includes the "ice-friendly" aerosol number concentration.
       flag_qnwfa,            &     ! if true,the physics package includes the "water-friendly" aerosol number concentration.
       flag_qnbca                   ! if true,the physics package includes the number concentration of black carbon.
-    logical, parameter :: flag_ozone = .false.
+    logical, parameter :: flag_oz = .false.
     contains
 
     subroutine init_mynn_edmf_flags()
@@ -94,7 +94,7 @@ module module_bl_mynnedmf_wrf_tests
 
         ! 2D arrays
         real, allocatable :: xland(:,:), ps(:,:), ts(:,:), qsfc(:,:), ust(:,:), ch(:,:),     &
-                hfx(:,:), qfx(:,:), wspd(:,:), znt(:,:), uoce(:,:), voce(:,:)
+                hfx(:,:), qfx(:,:), wspd(:,:), znt(:,:), uoce(:,:), voce(:,:), dx2d(:,:)
         ! output 2D arrays
         real, allocatable :: excess_h(:,:), excess_q(:,:), maxmf(:,:),maxwidth(:,:),         &
                 pblh(:,:),ztop_plume(:,:)
@@ -121,6 +121,13 @@ module module_bl_mynnedmf_wrf_tests
         real, allocatable :: det_sqv3d(:,:,:),dqke(:,:,:),edmf_a(:,:,:),edmf_ent(:,:,:),    &
                 edmf_qc(:,:,:), edmf_qt(:,:,:),edmf_thl(:,:,:),edmf_w(:,:,:),det_thl3d(:,:,:)
 
+        !smoke/dust parameters
+        logical,parameter::mix_chem=.false.
+        integer,parameter::nchem=1,ndvel=1
+
+        !ccpp obligation
+        character::errmsg
+        integer::errflg
 
         ! Open NetCDF file
         print*,'Case: ',trim(case)
@@ -188,6 +195,7 @@ module module_bl_mynnedmf_wrf_tests
         allocate(znt(ims:ime, jms:jme))
         allocate(uoce(ims:ime, jms:jme))
         allocate(voce(ims:ime, jms:jme))
+        allocate(dx2d(ims:ime, jms:jme))
 
         allocate(kpbl(ims:ime, jms:jme))
         allocate(maxmf(ims:ime, jms:jme))
@@ -317,6 +325,8 @@ module module_bl_mynnedmf_wrf_tests
             status = nf90_get_var(ncid, varid, voce, &
                                   start=[1,1,t], count=[1,1,1])
 
+            dx2d = dxc
+            
             ! Read 3D for this timestep:(t,nz,1,1)
             status = nf90_inq_varid(ncid, "dz", varid)
             status = nf90_get_var(ncid, varid, dz(1,:,1), &
@@ -394,49 +404,54 @@ module module_bl_mynnedmf_wrf_tests
                                   start=[1,1,1,t], count=[1,1,nz,1])
 
             call mynnedmf_driver    &
-                 (ids               , ide               , jds                , jde                , &
-                  kds               , kde               , ims                , ime                , &
-                  jms               , jme               , kms                , kme                , &
-                  its               , ite               , jts                , jte                , &
-                  kts               , kte               , flag_qc            , flag_qi            , &
-                  flag_qs           , flag_qnc          , flag_qni           ,                      &
-                  flag_qnifa        , flag_qnwfa        , flag_qnbca         , initflag           , &
-                  restart           , cycling           , delt               ,                      &
-                  dxc               , xland             , ps                 , ts                 , &
-                  qsfc              , ust               , ch                 , hfx                , &
-                  qfx               , wspd              , znt                ,                      &
-                  uoce              , voce              , dz                 , u                  , &
-                  v                 , w                 , th                 , t3d                , &
-                  p                 , exner             , rho                , qv                 , &
-                  qc                , qi                , qs                 , qnc                , &
-                  qni               , qnifa             , qnwfa              , qnbca              , &
-!                  qoz               ,                                                               &
-                  rthraten          , pblh              , kpbl               ,                      &
-                  cldfra_bl         , qc_bl             , qi_bl              , maxwidth           , &
-                  maxmf             , ztop_plume        , excess_h           , excess_q           , &
-                  qke               , qke_adv           ,                                           &
-                  tsq               , qsq               , cov                ,                      &
-                  el_pbl            , rublten           , rvblten            , rthblten           , &
-                  rqvblten          , rqcblten          , rqiblten           , rqsblten           , &
-                  rqncblten         , rqniblten         , rqnifablten        , rqnwfablten        , &
-                  rqnbcablten       ,                                                               &
-!                  rqozblten         ,                                                               &
-                  edmf_a            , edmf_w            ,                                           &
-                  edmf_qt           , edmf_thl          , edmf_ent           , edmf_qc            , &
-                  sub_thl3d         , sub_sqv3d         , det_thl3d          , det_sqv3d          , &
-                  exch_h            , exch_m            , dqke               , qwt                , &
-                  qshear            , qbuoy             , qdiss              , sh3d               , &
-                  sm3d              , spp_pbl           , pattern_spp_pbl    , icloud_bl          , &
-                  bl_mynn_tkeadvect , tke_budget        , bl_mynn_cloudpdf   , bl_mynn_mixlength  , &
-                  bl_mynn_closure   , bl_mynn_edmf      , bl_mynn_edmf_mom   , bl_mynn_edmf_tke   , &
-                  bl_mynn_output    , bl_mynn_mixscalars, bl_mynn_mixaerosols, bl_mynn_mixnumcon  , &
-                  bl_mynn_cloudmix  , bl_mynn_mixqt     , bl_mynn_edmf_dd    , bl_mynn_ess          &
-#if(WRF_CHEM == 1)
-                  ,mix_chem         , chem3d            , vd3d               , nchem              , &
-                  kdvel             , ndvel             , num_vert_mix                              &
-!                  frp_mean          , emis_ant_no       , enh_mix                                   & !to be included soon
-#endif
-               )
+                 (ids=ids              , ide=ide             , jds=jds             , jde=jde            , &
+                  kds=kds              , kde=kde             , ims=ims             , ime=ime            , &
+                  jms=jms              , jme=jme             , kms=kms             , kme=kme            , &
+                  its=its              , ite=ite             , jts=jts             , jte=jte            , &
+                  kts=kts              , kte=kte             , flag_qc=flag_qc     , flag_qi=flag_qi    , &
+                  flag_qs=flag_qs      , flag_qnc=flag_qnc   , flag_qni=flag_qni   , flag_oz=flag_oz    , &
+                  flag_qnifa=flag_qnifa,flag_qnwfa=flag_qnwfa,flag_qnbca=flag_qnbca,initflag=initflag   , &
+                  restart=restart      , cycling=cycling     , delt=delt           ,                      &
+                  dx=dx2d              , xland=xland         , ps=ps               , ts=ts              , &
+                  qsfc=qsfc            , ust=ust             , ch=ch               , hfx=hfx            , &
+                  qfx=qfx              , wspd=wspd           , znt=znt             ,                      &
+                  uoce=uoce            , voce=voce           , dz=dz               , u=u                , &
+                  v=v                  , w=w                 , th=th               , t3d=t3d            , &
+                  p=p                  , exner=exner         , rho=rho             , qv=qv              , &
+                  qc=qc                , qi=qi               , qs=qs               , qnc=qnc            , &
+                  qni=qni              , qnifa=qnifa         , qnwfa=qnwfa         , qnbca=qnbca        , &
+!                  qoz=qoz              ,                                                                  &
+                  rthraten=rthraten    , pblh=pblh           , kpbl=kpbl           ,                      &
+                  cldfra_blcldfra_bl   , qc_bl=qc_bl         , qi_bl=qi_bl         , maxwidth=maxwidth  , &
+                  maxmf=maxmf          ,ztop_plume=ztop_plume, excess_h=excess_h   , excess_q=excess_h  , &
+                  qke=qke              , qke_adv=qke_adv     ,                                            &
+                  tsq=tsq              , qsq=qsq             , cov=cov             ,                      &
+                  el_pbl=el_pbl        , rublten=rublten     , rvblten=rvblten     , rthblten=rthblten  , &
+                  rqvblten=rqvblten    , rqcblten=rqcblten   , rqiblten=rqiblten   , rqsblten=rqsblten  , &
+                  rqncblten=rqncblten  , rqniblten=rqniblten , rqnifablten=rqnifablten,rqnwfablten=rqnwfablten, &
+                  rqnbcablten=rqnbcablten,                                                                &
+!                  rqozblten=rqozblten  ,                                                                  &
+                  edmf_a=edmf_a        , edmf_w=edmf_w       ,                                            &
+                  edmf_qt=edmf_qt      , edmf_thl=edmf_thl   , edmf_ent=edmf_ent   , edmf_qc=edmf_qc    , &
+                  sub_thl=sub_thl3d    , sub_sqv=sub_sqv3d   , det_thl=det_thl3d   , det_sqv=det_sqv3d  , &
+                  exch_h=exch_h        , exch_m=exch_m       , dqke=dqke           , qwt=qwt            , &
+                  qshear=qshear        , qbuoy=qbuoy         , qdiss=qdiss         , sh3d=sh3d          , &
+                  sm3d=sm3d            , spp_pbl=spp_pbl     , pattern_spp=pattern_spp_pbl, icloud_bl=icloud_bl, &
+                  bl_mynn_tkeadvect    = bl_mynn_tkeadvect   , tke_budget          = tke_budget         , &
+                  bl_mynn_cloudpdf     = bl_mynn_cloudpdf    , bl_mynn_mixlength   = bl_mynn_mixlength  , &
+                  bl_mynn_closure      = bl_mynn_closure     , bl_mynn_edmf        = bl_mynn_edmf       , &
+                  bl_mynn_edmf_mom     = bl_mynn_edmf_mom    , bl_mynn_edmf_tke    = bl_mynn_edmf_tke   , &
+                  bl_mynn_output       = bl_mynn_output      , bl_mynn_mixscalars  = bl_mynn_mixscalars , &
+                  bl_mynn_mixaerosols  = bl_mynn_mixaerosols , bl_mynn_mixnumcon   = bl_mynn_mixnumcon  , &
+                  bl_mynn_cloudmix     = bl_mynn_cloudmix    , bl_mynn_mixqt       = bl_mynn_mixqt      , &
+                  bl_mynn_edmf_dd      = bl_mynn_edmf_dd     , bl_mynn_ess         = bl_mynn_ess        , &
+!#if(WRF_CHEM == 1)
+                  mix_chem=mix_chem    , nchem=nchem         , ndvel=ndvel         , enh_mix=enh_mix    , &
+                  chem3d=chem3d        , settle3d=settle3d   , vd3d=vd3d           ,                      &
+                  frp_mean=frp_mean    , emis_ant_no=emis_ant_no                   ,                      &
+!#endif
+                  errmsg=errmsg        , errflg=errflg                                                    &
+                  )
              
             
         print *, "u: ",  u(1,:,1)       

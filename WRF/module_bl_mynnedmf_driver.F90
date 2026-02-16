@@ -956,7 +956,7 @@
 !--- local variables:
  integer:: k
  integer,parameter::kts=1
- real(kind_phys):: rq,sq,tem
+ real(kind_phys):: rq,sq
  real(kind_phys),dimension(1:kte):: sqv,sqc,sqi,sqs
 !-----------------------------------------------------------------------------------------------------------------
 !---  initialization:
