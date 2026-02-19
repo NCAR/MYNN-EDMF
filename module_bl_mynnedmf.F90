@@ -1215,8 +1215,8 @@ CONTAINS
                &tcd1, qcd1,                              &
                &dfh1,                                    &
                &s_aw1,s_awchem1,                         &
-               &zero,                                    &
-               &zero,                                    &
+               &emis_ant_no,                             &
+               &frp,                                     &
                &enh_mix,                                 &
                &bl_mynn_edmf                             )
        do ic = 1,nchem
@@ -5811,7 +5811,7 @@ integer, SAVE :: icall
 
 real(kind_phys), dimension(kts:kte) :: rhoinv
 real(kind_phys), dimension(kts:kte+1) :: rhoz,khdz
-real(kind_phys), parameter :: NO_threshold    = 10.0     ! For anthropogenic sources
+real(kind_phys), parameter :: NO_threshold    = 0.1      ! For anthropogenic sources
 real(kind_phys), parameter :: frp_threshold   = 10.0     ! RAR 02/11/22: I increased the frp threshold to enhance mixing over big fires
 real(kind_phys), parameter :: pblh_threshold  = 100.0
 
