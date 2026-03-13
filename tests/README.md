@@ -4,7 +4,7 @@
     * non-precip StCu, ocean point (40.84°N, 66.80°W) on Mar 07, 2024
 * Input:
 
-    * Input file for clr case is generated using WRF
+    * Input files are generated using WRF
 
 * To run the CI tests offline:
     ```
