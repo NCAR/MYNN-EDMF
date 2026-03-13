@@ -598,8 +598,7 @@ CONTAINS
  real(kind_phys), dimension(kts:kte+1) :: zw1              !interface
  real(kind_phys) :: cpm,sqcg,flt,fltv,flq,flqv,flqc,                &
        pmz,phh,exnerg,zet,phi_m,                                    &
-       afk,abk,ts_decay, qc_bl2, qi_bl2,                            &
-       th_sfc,wsp
+       afk,abk,th_sfc,wsp
  integer:: ktop_plume
 
 !top-down diffusion
@@ -1866,15 +1865,12 @@ CONTAINS
                                      !! layer stops growing for PBLHs > 2.5 km.
     real(kind_phys), parameter :: mindz       = 250.  !< min (half) transition layer depth
 
-    !SURFACE LAYER LENGTH SCALE MODS TO REDUCE IMPACT IN UPPER BOUNDARY LAYER
-    real(kind_phys), parameter :: ZSLH        = 100.  !< Max height correlated to surface conditions (m)
-    real(kind_phys), parameter :: CSL         = 2.    !< CSL = constant of proportionality to L O(1)
     real(kind_phys), parameter :: qkw_elb_min = 0.05  !this assumes some minumum TKE/TPE is present 
 
     integer :: i,j,k
     real(kind_phys):: afk,abk,zwk,zwk1,dzk,qdz,vflx,bv,tau_cloud,      &
            & wstar,elb,els,elf,el_stab,el_mf,el_stab_mf,elb_mf,elt_max,&
-           & PBLH_PLUS_ENT,Uonset,Ugrid,wt_u1,wt_u2,el_les,qkw_mf,     &
+           & pblh_plus_ent,uonset,ugrid,wt_u1,wt_u2,el_les,qkw_mf,     &
            & z_m,el_unstab,els1,alp3z,cpblh,wt_dx
     real(kind_phys), parameter :: ctau = 1000. !constant for tau_cloud
 
@@ -1885,8 +1881,8 @@ CONTAINS
 
       CASE (0) ! ORIGINAL MYNN MIXING LENGTH + BouLac
 
-        cns  = 2.7
-        alp1 = 0.23
+        cns  = 2.7_kind_phys
+        alp1 = 0.23_kind_phys
         alp2 = one
         alp3 = five
         alp4 = hundred
@@ -1894,9 +1890,9 @@ CONTAINS
 
         ! Impose limits on the height integration for elt and the transition layer depth
         pblh2= pblh+dz(kts)          !originally integrated to model top, not just pblh.
-        h1   = max(0.3*pblh2,mindz)
+        h1   = max(p3*pblh2,mindz)
         h1   = min(h1,maxdz)         ! 1/2 transition layer depth
-        h2   = h1/2.0                ! 1/4 transition layer depth
+        h2   = h1*p5                ! 1/4 transition layer depth
 
         qkw(kts) = SQRT(MAX(qke(kts), qkemin))
         DO k = kts+1,kte
@@ -1906,8 +1902,8 @@ CONTAINS
         END DO
         qtw = qkw
 
-        elt = 1.0e-5
-        vsc = 1.0e-5        
+        elt = 1.0e-5_kind_phys
+        vsc = 1.0e-5_kind_phys
 
         !   **  Strictly, zwk*h(i,j) -> ( zwk*h(i,j)+z0 )  **
         k   = kts+1
@@ -2713,7 +2709,7 @@ CONTAINS
        do k = kts,kte
           !Calculate qpe (twice tpe) as in Machulskaya and Mironov (2020, BLM), but with magnitudes
           !tapered at low-levels to limit high 10-m wind speed biases:
-          cpblh  = min((zw(k)+0.1_kind_phys*pblh2)/(0.8_kind_phys*pblh2), one)
+          cpblh  = min((zw(k) + p1*pblh2)/(0.8_kind_phys*pblh2), one)
           !qpe(k) = two * tsq(k) * gtr**2 * (p5*(el(k+1)+el(k))/10.)**2/(p5*max(0.01,qke(k)))
           qpe(k) = min(three, max(zero, cpblh * two * tsq(k) * gtr**2 * taue**2))
        enddo
@@ -2753,15 +2749,15 @@ CONTAINS
        q3sq = qkw(k)**2
        q2sq = b1*elsq*( sm(k)*gm(k)+sh(k)*gh(k) )
 
-       sh20 = MAX(sh(k), 1e-5)
-       sm20 = MAX(sm(k), 1e-5)
-       sh(k)= MAX(sh(k), 1e-5)
+       sh20 = MAX(sh(k), 1e-5_kind_phys)
+       sm20 = MAX(sm(k), 1e-5_kind_phys)
+       sh(k)= MAX(sh(k), 1e-5_kind_phys)
 
        !Canuto/Kitamura mod
        duz = ( u(k)-u(k-1) )**2 +( v(k)-v(k-1) )**2
        duz =   duz                    /dzk**2
        !   **  Gradient Richardson number  **
-       ri = -gh(k)/MAX( duz, 1.0e-10 )
+       ri = -gh(k)/MAX( duz, 1.0e-10_kind_phys )
        if (CKmod .eq. 1) then
           a2fac = one/(one + max(ri,zero))
        else
