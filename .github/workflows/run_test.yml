@@ -38,3 +38,9 @@ jobs:
       run: |
         cd ${driver_ROOT}/tests
         ./driver
+
+    - name: Generate code coverage report
+      run: |
+        cd ${driver_ROOT}/tests
+        gcov -o . ../module_bl_mynnedmf.F90 ../WRF/module_bl_mynnedmf_driver.F90
+           #gcovr --root .. -g --filter '.*/module_bl_mynnedmf.F90' --exclude '.*/tests/.*'
