@@ -507,7 +507,7 @@
             tke_budget         = bl_mynn_tkebudget    , &
             bl_mynn_cloudpdf   = bl_mynn_cloudpdf     , &
             bl_mynn_mixlength  = bl_mynn_mixlength    , &
-            closure            = bl_mynn_closure      , &
+            bl_mynn_closure    = bl_mynn_closure      , &
             bl_mynn_edmf       = bl_mynn_edmf         , &
             bl_mynn_edmf_dd    = bl_mynn_edmf_dd      , &
             bl_mynn_edmf_mom   = bl_mynn_edmf_mom     , &
