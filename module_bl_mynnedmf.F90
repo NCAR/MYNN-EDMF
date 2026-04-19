@@ -583,7 +583,7 @@ CONTAINS
        sub_u1,sub_v1,det_sqc1,det_u1,det_v1
  real(kind_phys), dimension(kts:kte+1) ::                           & !interface
        s_aw1,s_awthl1,s_awqt1,                                      &
-       s_awqv1,s_awqc1,s_awu1,s_awv1,s_awqke1,                      &
+       s_awqv1,s_awqc1,s_awu1,s_awv1,s_awqke1,s_awqsq1,             &
        s_awqnc1,s_awqni1,s_awqnwfa1,s_awqnifa1,                     &
        s_awqnbca1
  real(kind_phys), dimension(kts:kte+1) ::                           & !interface
@@ -862,6 +862,7 @@ CONTAINS
     s_awu1     =zero
     s_awv1     =zero
     s_awqke1   =zero
+    s_awqsq1   =zero
     s_awqnc1   =zero
     s_awqni1   =zero
     s_awqnwfa1 =zero
@@ -1013,8 +1014,9 @@ CONTAINS
             &bl_mynn_mixscalars,                      &
             &bl_mynn_mixaerosols,                     &
             &bl_mynn_mixnumcon,                       &
+            &bl_mynn_closure,                         &
             &u1,v1,w1,th1,thl1,thv1,tk1,              &
-            &sqw1,sqv1,sqc1,qke1,                     &
+            &sqw1,sqv1,sqc1,qke1,qsq1,                &
             &qnc1,qni1,qnwfa1,qnifa1,qnbca1,          &
             &ex1,vt1,vq1,sgm1,                        &
             &ust,flt,fltv,flq,flqv,                   &
@@ -1029,7 +1031,7 @@ CONTAINS
             ! for the solver
             &s_aw1,s_awthl1,s_awqt1,                  &
             &s_awqv1,s_awqc1,                         &
-            &s_awu1,s_awv1,s_awqke1,                  &
+            &s_awu1,s_awv1,s_awqke1,s_awqsq1,         &
             &s_awqnc1,s_awqni1,                       &
             &s_awqnwfa1,s_awqnifa1,s_awqnbca1,        &
             &sub_thl1,sub_sqv1,                       &
@@ -1135,7 +1137,7 @@ CONTAINS
             &ust, flt, flq, pmz, phh,                    &
             &el1, dfq1, rho1, pdk1, pdt1, pdq1, pdc1,    &
             &qke1, tsq1, qsq1, cov1,                     &
-            &s_aw1, s_awqke1,                            &
+            &s_aw1, s_awqke1, s_awqsq1,                  &
             &bl_mynn_edmf, bl_mynn_edmf_tke,             &
             &qWT1, qDISS1, tke_budget                    )
 
@@ -3215,7 +3217,8 @@ SUBROUTINE  mym_predict (kts,kte,                                     &
      &            el,  dfq, rho,                                      &
      &            pdk, pdt, pdq, pdc,                                 &
      &            qke, tsq, qsq, cov,                                 &
-     &            s_aw1,s_awqke1,bl_mynn_edmf,bl_mynn_edmf_tke,       &
+     &            s_aw1, s_awqke1, s_awqsq1,                          &
+     &            bl_mynn_edmf, bl_mynn_edmf_tke,                     &
      &            qWT1, qDISS1,tke_budget                             )
 
 !-------------------------------------------------------------------
@@ -3233,7 +3236,7 @@ real(kind_phys), dimension(kts:kte), intent(inout) :: pdk, pdt, pdq, pdc
 real(kind_phys), intent(in)    :: flt, flq, pmz, phh
 real(kind_phys), intent(in)    :: ust, delt
 real(kind_phys), dimension(kts:kte), intent(inout) :: qke,tsq, qsq, cov
-real(kind_phys), dimension(kts:kte+1), intent(inout) :: s_awqke1,s_aw1
+real(kind_phys), dimension(kts:kte+1), intent(inout) :: s_awqke1,s_awqsq1,s_aw1
     
 !!  TKE budget  (Puhales, 2020, WRF 4.2.1)  << EOB 
 real(kind_phys), dimension(kts:kte), intent(out) :: qWT1, qDISS1
@@ -3300,6 +3303,9 @@ if (bl_mynn_edmf == 1) then
    ENDDO
 endif
 
+!-----------------------------------------------------------------------
+!   **  Compute production terms at the surface  **
+!-----------------------------------------------------------------------
 pdk1 = two*ust**3*pmz/( vkz )
 phm  = two/ust   *phh/( vkz )
 pdt1 = phm*flt**2
@@ -3315,8 +3321,10 @@ pdk(kts) = pdk1 - pdk(kts+1)
 pdt(kts) = pdt(kts+1)
 pdq(kts) = pdq(kts+1)
 pdc(kts) = pdc(kts+1)
-!
+
+!----------------------------------------------------------------------
 !   **  Prediction of twice the turbulent kinetic energy  **
+!----------------------------------------------------------------------
 !! DO k = kts+1,kte-1
 DO k = kts,kte-1
    b1l = b1*p5*( el(k+1)+el(k) )
@@ -3417,54 +3425,85 @@ IF (tke_budget .eq. 1) THEN
    qDISS1=bp*tke_up !! TKE dissipation rate !unstaggered
 END IF
 !! >> EOB 
-   
-    IF ( closure > 2.5 ) THEN
 
-       !   **  Prediction of the moisture variance  **
-       DO k = kts,kte-1
-          b2l   = b2*p5*( el(k+1)+el(k) )
-          bp(k) = two*qkw(k) / b2l
-          rp(k) = pdq(k+1) + pdq(k)
-       END DO
+if ( closure > 2.5 ) then
+   !-----------------------------------------------------------------
+   !   **  Prediction of the moisture variance  **
+   !-----------------------------------------------------------------
+   do k = kts,kte-1
+      b2l   = b2*p5*( el(k+1)+el(k) )
+      bp(k) = two*qkw(k) / b2l
+      rp(k) = pdq(k+1) + pdq(k)
+   enddo
+   bp(kte) = zero
 
-       !zero gradient for qsq at bottom and top
-       !a(1)=0.
-       !b(1)=1.
-       !c(1)=-1.
-       !d(1)=0.
 
-       ! Since dfq(kts)=0.0, a(1)=0.0 and b(1)=1.+dtz(k)*dfq(k+1)+bp(k)*delt.
-       DO k=kts,kte-1
-          a(k)=   - dtz(k)*kmdz(k)*rhoinv(k)
-          b(k)=one+ dtz(k)*(kmdz(k)+kmdz(k+1))*rhoinv(k) + bp(k)*delt
-          c(k)=   - dtz(k)*kmdz(k+1)*rhoinv(k)
-          d(k)=rp(k)*delt + max(zero, qsq(k))
-       ENDDO
+   if (bl_mynn_edmf > 1) then
+      do k=kts+1,kte-1
+         upcont(k)= s_awqsq1(k)- s_aw1(k)*(qsq(k)*upwind+qsq(k-1)*(one-upwind))
+         dncont(k)=zero !sd_awqsq1(k)-sd_aw1(k)*(qsq(k)*upwind+qsq(k-1)*(one-upwind))
+      enddo
+      ! no flux at the top of the atmosphere
+      upcont(kte)=zero
+      dncont(kte)=zero
 
-       a(kte)=-1. !0.
-       b(kte)=one
-       c(kte)=zero
-       d(kte)=zero
+      k=kts
+      a(1)=zero
+      b(1)=one + dtz(k)*kmdz(k+1)*rhoinv(k) + bp(k)*delt
+      c(1)=    - dtz(k)*kmdz(k+1)*rhoinv(k)
+      d(1)=max(zero, qsq(k)) + rp(k)*delt                        &
+          &    - dtz(k)*(upcont(k+1)+dncont(k+1))
 
-!       CALL tridiag(kte,a,b,c,d)
-    CALL tridiag2(kte,a,b,c,d,x)
+      do k=kts+1,kte-1
+         a(k)=   - dtz(k)*kmdz(k)*rhoinv(k)
+         b(k)=one+ dtz(k)*(kmdz(k)+kmdz(k+1))*rhoinv(k) + bp(k)*delt
+         c(k)=   - dtz(k)*kmdz(k+1)*rhoinv(k)
+         d(k)=max(zero, qsq(k)) + rp(k)*delt                     &
+            &    - dtz(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k))
+      enddo
        
-       DO k=kts,kte
-          !qsq(k)=d(k-kts+1)
-          qsq(k)=min(5e-6_kind_phys, max(x(k),1e-17_kind_phys))
-       ENDDO
-    ELSE
-       !level 2.5 - use level 2 diagnostic
-       DO k = kts,kte-1
-          IF ( qkw(k) .LE. zero ) THEN
-             b2l = zero
-          ELSE
-             b2l = b2*0.25*( el(k+1)+el(k) )/qkw(k)
-          END IF
-          qsq(k) = min(5e-6_kind_phys, max(1e-17_kind_phys, b2l*( pdq(k+1)+pdq(k) )))
-       END DO
-       qsq(kte)=qsq(kte-1)
-    END IF
+   else !implicit
+
+      do k=kts,kte-1
+         a(k)=   - dtz(k)*kmdz(k)*rhoinv(k)                         &
+             &   + 0.5*dtz(k)*rhoinv(k)*s_aw1(k)*onoff
+         b(k)=1. + dtz(k)*(kmdz(k)+kmdz(k+1))*rhoinv(k)             &
+             &   + 0.5*dtz(k)*rhoinv(k)*(s_aw1(k)-s_aw1(k+1))*onoff &
+             &   + bp(k)*delt
+         c(k)=   - dtz(k)*kmdz(k+1)*rhoinv(k)                       &
+             &   - 0.5*dtz(k)*rhoinv(k)*s_aw1(k+1)*onoff
+         d(k)=rp(k)*delt + qsq(k)                                   &
+             &   + dtz(k)*rhoinv(k)*(s_awqsq1(k)-s_awqsq1(k+1))*onoff
+      enddo
+   endif
+
+   a(kte)=-one
+   b(kte)=one
+   c(kte)=zero
+   d(kte)=zero !qsq(kte)
+
+   !call tridiag(kte,a,b,c,d)
+   call tridiag2(kte,a,b,c,d,x)
+
+   do k=kts,kte
+      !qke(k)=max(d(k-kts+1), qkemin)
+      qsq(k)=max(x(k), 1e-17_kind_phys)
+      qsq(k)=min(qsq(k),6e-6_kind_phys)
+   enddo
+
+else
+   !level 2.5 - use level 2 diagnostic
+   do k = kts,kte-1
+      if ( qkw(k) .le. zero ) then
+         b2l = zero
+      else
+         b2l = b2*0.25_kind_phys*( el(k+1)+el(k) )/qkw(k)
+      end if
+      qsq(k) = min(6e-6_kind_phys, max(1e-17_kind_phys, b2l*( pdq(k+1)+pdq(k) )))
+   enddo
+   qsq(kte)=qsq(kte-1)
+endif
+    
 !!!!!!!!!!!!!!!!!!!!!!end level 2.6   
 
     IF ( closure .GE. 2.7 ) THEN
@@ -6370,7 +6409,7 @@ END SUBROUTINE GET_PBLH
                  & aerosol_opt, numcon_opt,        &
                  & bl_mynn_closure,                &
                  & u1,v1,w1,th1,thl1,thv1,tk1,     &
-                 & qt1,qv1,qc1,qke1,               &
+                 & qt1,qv1,qc1,qke1,qsq1,          &
                  & qnc1,qni1,qnwfa1,qnifa1,qnbca1, &
                  & ex1,vt1,vq1,sgm1,               &
                  & ust,flt,fltv,flq,flqv,          &
@@ -6383,7 +6422,7 @@ END SUBROUTINE GET_PBLH
             ! outputs - variables needed for solver 
                  & s_aw1,s_awthl1,s_awqt1,         &
                  & s_awqv1,s_awqc1,                &
-                 & s_awu1,s_awv1,s_awqke1,         &
+                 & s_awu1,s_awv1,s_awqke1,s_awqsq1,&
                  & s_awqnc1,s_awqni1,              &
                  & s_awqnwfa1,s_awqnifa1,          &
                  & s_awqnbca1,                     &
@@ -6428,7 +6467,7 @@ END SUBROUTINE GET_PBLH
 ! state variables
  real(kind_phys), dimension(kts:kte), intent(in)  ::               &
       &u1,v1,w1,th1,thl1,tk1,qt1,qv1,qc1,                          &
-      &ex1,dz1,thv1,pres1,rho1,qke1,qnc1,qni1,                     &
+      &ex1,dz1,thv1,pres1,rho1,qke1,qsq1,qnc1,qni1,                &
       &qnwfa1,qnifa1,qnbca1,el1
  real(kind_phys),dimension(kts:kte+1), intent(in) ::               &
       &zw1
@@ -6451,7 +6490,7 @@ END SUBROUTINE GET_PBLH
  real(kind_phys),dimension(kts:kte+1), intent(inout) ::            &
       &s_aw1,s_awthl1,s_awqt1,s_awqv1,s_awqc1,s_awqnc1,s_awqni1,   &
       &s_awqnwfa1,s_awqnifa1,s_awqnbca1,s_awu1,s_awv1,             &
-      &s_awqke1
+      &s_awqke1,s_awqsq1
  real(kind_phys),dimension(kts:kte+1) :: s_aw2
 
  real(kind_phys),dimension(kts:kte), intent(inout) ::              &
@@ -6464,7 +6503,7 @@ END SUBROUTINE GET_PBLH
  ! first model layer
  real(kind_phys),dimension(kts:kte+1,1:NUP) ::                     &
       &UPW,UPTHL,UPQT,UPQC,UPQV,                                   &
-      &UPA,UPU,UPV,UPTHV,UPQKE,UPQNC,                              &
+      &UPA,UPU,UPV,UPTHV,UPQKE,UPQSQ,UPQNC,                        &
       &UPQNI,UPQNWFA,UPQNIFA,UPQNBCA
  ! entrainment defined as the mass-layer mean
  real(kind_phys),dimension(kts:kte,1:NUP) :: ENT
@@ -6472,7 +6511,7 @@ END SUBROUTINE GET_PBLH
  integer :: k,ip,k50
  real(kind_phys):: fltv2,wstar,qstar,thstar,sigmaW,sigmaQT,        &
       &sigmaTH,z0,pwmin,pwmax,wmin,wmax,wlv,Psig_w,maxw,maxqc,wpbl
- real(kind_phys):: B,QTn,THLn,THVn,QCn,Un,Vn,QKEn,QNCn,QNIn,       &
+ real(kind_phys):: B,QTn,THLn,THVn,QCn,Un,Vn,QKEn,QSQn,QNCn,QNIn,  &
       &  QNWFAn,QNIFAn,QNBCAn,upak,                                &
       &  Wn2,Wn,EntEXP,EntEXM,EntW,BCOEFF,THVkm1,THVk,Pk,rho_int
 
@@ -6581,6 +6620,7 @@ END SUBROUTINE GET_PBLH
  UPQC      =zero
  UPQV      =zero
  UPQKE     =zero
+ UPQSQ     =zero
  UPQNC     =zero
  UPQNI     =zero
  UPQNWFA   =zero
@@ -6615,6 +6655,7 @@ END SUBROUTINE GET_PBLH
  s_awu1    =zero
  s_awv1    =zero
  s_awqke1  =zero
+ s_awqsq1  =zero
  s_awqnc1  =zero
  s_awqni1  =zero
  s_awqnwfa1=zero
@@ -6885,6 +6926,7 @@ END SUBROUTINE GET_PBLH
        UPQT(2,ip)   =(qt1(kts)   *dz1(kts+1)+qt1(kts+1)   *dz1(kts))/(dz1(kts)+dz1(kts+1))&
             &       + exc_moist
        UPQKE(2,ip)  =(qke1(kts)  *dz1(kts+1)+qke1(kts+1)  *dz1(kts))/(dz1(kts)+dz1(kts+1))
+       UPQSQ(2,ip)  =(qsq1(kts)  *dz1(kts+1)+qsq1(kts+1)  *dz1(kts))/(dz1(kts)+dz1(kts+1))
        UPQNC(2,ip)  =(qnc1(kts)  *dz1(kts+1)+qnc1(kts+1)  *dz1(kts))/(dz1(kts)+dz1(kts+1))
        UPQNI(2,ip)  =(qni1(kts)  *dz1(kts+1)+qni1(kts+1)  *dz1(kts))/(dz1(kts)+dz1(kts+1))
        UPQNWFA(2,ip)=(qnwfa1(kts)*dz1(kts+1)+qnwfa1(kts+1)*dz1(kts))/(dz1(kts)+dz1(kts+1))
@@ -6984,6 +7026,7 @@ END SUBROUTINE GET_PBLH
           Un     =UPU(k,IP)    *(one-EntExm) + u1(k)*EntExm + dxsa*pgfac*(Uk - Ukm1)
           Vn     =UPV(k,IP)    *(one-EntExm) + v1(k)*EntExm + dxsa*pgfac*(Vk - Vkm1)
           QKEn   =UPQKE(k,IP)  *(one-EntExp) + qke1(k)*EntExp
+          QSQn   =UPQSQ(k,IP)  *(one-EntExp) + qsq1(k)*EntExp
           QNCn   =UPQNC(k,IP)  *(one-EntExp) + qnc1(k)*EntExp
           QNIn   =UPQNI(k,IP)  *(one-EntExp) + qni1(k)*EntExp
           QNWFAn =UPQNWFA(k,IP)*(one-EntExp) + qnwfa1(k)*EntExp
@@ -7127,6 +7170,7 @@ END SUBROUTINE GET_PBLH
              UPU(k+1,IP)=Un
              UPV(k+1,IP)=Vn
              UPQKE(k+1,IP)=QKEn
+             UPQSQ(k+1,IP)=QSQn
              UPQNC(k+1,IP)=QNCn
              UPQNI(k+1,IP)=QNIn
              UPQNWFA(k+1,IP)=QNWFAn
@@ -7224,6 +7268,14 @@ END SUBROUTINE GET_PBLH
              s_awqke1(k)= s_awqke1(k) + rhoi(k)*UPA(K,ip)*UPW(K,ip)*UPQKE(K,ip)*Psig_w
           enddo
        enddo
+       !qsq
+       if (bl_mynn_closure > 2.5) then
+          do ip=1,nup
+             do k=kts,kte-1
+                s_awqsq1(k)= s_awqsq1(k) + rhoi(k)*UPA(K,ip)*UPW(K,ip)*UPQSQ(K,ip)*Psig_w
+             enddo
+          enddo
+       endif
     endif
     !chem
     if ( mix_chem ) then
@@ -7299,6 +7351,7 @@ END SUBROUTINE GET_PBLH
       ENDIF
       IF (tke_opt > 0) THEN
          s_awqke1= s_awqke1*adjustment
+         if (bl_mynn_closure>2.5) s_awqsq1= s_awqsq1*adjustment
       ENDIF
       IF ( mix_chem ) THEN
          s_awchem1 = s_awchem1*adjustment
