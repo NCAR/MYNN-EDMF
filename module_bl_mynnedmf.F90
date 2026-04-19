@@ -1156,7 +1156,7 @@ CONTAINS
 !>  - Call mynn_tendencies() to solve for tendencies of 
 !! \f$U, V, \theta, q_{v}, q_{c}, and q_{i}\f$.
     call mynn_tendencies(kts,kte,i,                      &
-            &delt, dz1, zw1, xland, rho1,                &
+            &delt, dz1, zw1, xland, pblh, rho1,          &
             &u1, v1, th1, tk1, qv1,                      &
             &qc1, qi1, kzero1, qnc1, qni1,               & !kzero replaces qs1 - not mixing snow
             &ps, pres1, ex1, thl1,                       &
@@ -4141,7 +4141,7 @@ endif
 !! This subroutine solves for tendencies of U, V, \f$\theta\f$, qv,
 !! qc, and qi
   SUBROUTINE mynn_tendencies(kts,kte,i,       &
-       &delt,dz,zw,xland,rho,                 &
+       &delt,dz,zw,xland,pblh,rho,            &
        &u,v,th,tk,qv,qc,qi,qs,qnc,qni,        &
        &psfc,p,exner,                         &
        &thl,sqv,sqc,sqi,sqs,sqw,              &
@@ -4220,7 +4220,7 @@ endif
     real(kind_phys), dimension(kts:kte), intent(inout) :: du,dv,dth,dqv,  &
          &dqc,dqi,dqs,dqni,dqnc,dqnwfa,dqnifa,dqnbca,dozone
     real(kind_phys), intent(in) :: flt,flq,flqv,flqc,uoce,voce
-    real(kind_phys), intent(in) :: ust,delt,psfc,wspd,xland
+    real(kind_phys), intent(in) :: ust,delt,psfc,wspd,xland,pblh
     !debugging
     real(kind_phys):: wsp,wsp2,tk2,th2
     logical :: problem
@@ -4256,6 +4256,7 @@ endif
     !real(kind_phys), parameter :: ifa_min = 0.0     !kg-1
     !real(kind_phys), parameter :: wfa_ht  = 2000.   !meters
     !real(kind_phys), parameter :: ifa_ht  = 10000.  !meters
+    real(kind_phys) :: wfa_max2, wt
 
     dztop=p5*(dz(kte)+dz(kte-1))
 
@@ -5247,24 +5248,31 @@ IF (FLAG_QNWFA .AND. bl_mynn_mixaerosols > 0) THEN
     d(kte)=qnwfa2(kte)
 
 !    CALL tridiag(kte,a,b,c,d)
-    CALL tridiag2(kte,a,b,c,d,x)
-!    CALL tridiag3(kte,a,b,c,d,x)
+    call tridiag2(kte,a,b,c,d,x)
+!    call tridiag3(kte,a,b,c,d,x)
 
-    DO k=kts,kte
+    do k=kts,kte
        !qnwfa2(k)=d(k)
        qnwfa2(k)=max(x(k),zero)
-    ENDDO
+    enddo
 
-    !apply bounds
-    DO k=kts,kte
+    !apply liberal bounds
+    do k=kts,kte
+       !patch for high wfa over water (useful for cold starts)
+       if ((xland-1.5).ge.0)then   ! water
+          wt       = min(one, max(zero, zw(k)-100._kind_phys)/max(200._kind_phys, pblh)) !0 below 100 m, 1 above 300 m
+          wfa_max2 = (one - wt)*6.e8_kind_phys + wt*wfa_max
+       else                        ! land
+          wfa_max2 = wfa_max
+       endif
        aero_min = wfa_min * exp(-zw(k)/wfa_ht)
-       aero_max = wfa_max * exp(-zw(k)/wfa_ht)
+       aero_max = wfa_max2* exp(-zw(k)/wfa_ht)
        qnwfa2(k)= min(max(aero_min, qnwfa2(k)), aero_max)
-    ENDDO
-ELSE
-    !If not mixing aerosols, set "updated" array equal to original array
+    enddo
+else
+    !if not mixing aerosols, set "updated" array equal to original array
     qnwfa2=qnwfa
-ENDIF
+endif
 
 !============================================
 ! Ice-friendly aerosols ( qnifa ).
