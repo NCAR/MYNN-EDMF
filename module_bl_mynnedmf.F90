@@ -6551,7 +6551,7 @@ END SUBROUTINE GET_PBLH
  real(kind_phys),dimension(kts:kte+1, nchem) :: s_awchem1
  real(kind_phys),dimension(nchem)            :: chemn
  real(kind_phys),dimension(kts:kte+1,1:NUP, nchem) :: UPCHEM
- integer :: ic
+ integer :: ic,cb_check
  real(kind_phys),dimension(kts:kte,   nchem) :: edmf_chem
  logical, intent(in) :: mix_chem
  !generic scalars
@@ -6568,7 +6568,8 @@ END SUBROUTINE GET_PBLH
  real(kind_phys),dimension(kts:kte), intent(inout) :: vt1, vq1, sgm1
  real(kind_phys):: sigq,xl,rsl,cpm,a,qmq,Aup,Q1,diffqt,qsat_tk,     &
          Fng,qww,alpha,beta,bb,f,pt,t,q2p,b9,satvp,rhgrid,entfac,   &
-         cf_strat,qc_strat,cf_mf,qc_mf,qc_mf_min,pct_mf,wt2,dqwdz,tauc
+         cf_strat,qc_strat,cf_mf,qc_mf,qc_mf_min,pct_mf,wt2,        &
+         dqwdz,tauc,mf_at_cb,qcfac,sigqfac,cffac
  real(kind_phys), parameter :: cf_thresh = 0.5 ! only overwrite stratus CF less than this value
 
  ! Variables interpolated to interface levels
@@ -6839,7 +6840,7 @@ END SUBROUTINE GET_PBLH
        acfac = p5*tanh((fltv2 - 0.012_kind_phys)/0.03_kind_phys) + p5
     endif
       
-    !add a windspeed-dependent adjustment to acfac that tapers off
+    !For hurricane tuning, add a windspeed-dependent adjustment to acfac that tapers off
     !the mass-flux scheme linearly above sfc wind speeds of 13 m/s.
     ac_wsp = one - min((max(wspd_pbl - 13.0_kind_phys, zero))/12._kind_phys, one)
     acfac  = min(acfac, ac_wsp)
@@ -6998,7 +6999,7 @@ END SUBROUTINE GET_PBLH
           ! 0.30 ~ 1.43
           ! 0.28 ~ 1.33
           ! 0.26 ~ 1.24
-          entfac = 0.21_kind_phys * min(1.62_kind_phys, max(1.30_kind_phys, sqrt(qkebl)))
+          entfac = 0.21_kind_phys * min(1.57_kind_phys, max(1.30_kind_phys, sqrt(qkebl)))
           !entfac = 0.33_kind_phys
           !make entfac tend to original value (0.33) above the pblh:
           wt2    = min(one, max(zero, zagl - pblh)/500._kind_phys) !0 in pbl, 1 aloft
@@ -7538,118 +7539,127 @@ END SUBROUTINE GET_PBLH
 !update CLDFRA_bl1, qc_bl1. They have already been defined in
 !     mym_condensation. Here, a shallow-cu component is added, but no cumulus
 !     clouds can be added at k=1 (start loop at k=2).
+   cb_check = 0
    do k=kts+1,kte-2
       if (k > KTOP) exit
-         if(edmf_qc1(k) > zero ) then !.and. (cldfra_bl1(k) < cf_thresh))THEN
-            !plume properties within mass layers.
-            Aup = edmf_a1(k)
-            THp = edmf_th1(k)
-            QTp = edmf_qt1(k)
-            QCp = edmf_qc1(k)
-            dqwdz = (qti(k)-qti(k+1))/dz1(k) !pos = decreasing upward
-            !convert TH to T
-            !t = THp*exner(k)
-            !SATURATED VAPOR PRESSURE
-            esat = esat_blend(tk1(k))
-            !SATURATED SPECIFIC HUMIDITY
-            qsl=ep_2*esat/max(1.e-7_kind_phys,(pres1(k)-ep_3*esat)) 
+      if (edmf_qc1(k) > zero ) then !.and. (cldfra_bl1(k) < cf_thresh))THEN
+         if (cb_check == 0) then
+            mf_at_cb = edmf_a1(k)*edmf_w1(k)
+            cb_check = 1
+          endif
+          !plume properties within mass layers.
+          Aup = edmf_a1(k)
+          THp = edmf_th1(k)
+          QTp = edmf_qt1(k)
+          QCp = edmf_qc1(k)
+          dqwdz = (qti(k)-qti(k+1))/dz1(k) !pos = decreasing upward
+          !convert TH to T
+          !t = THp*exner(k)
+          !SATURATED VAPOR PRESSURE
+          esat = esat_blend(tk1(k))
+          !SATURATED SPECIFIC HUMIDITY
+          qsl=ep_2*esat/max(1.e-7_kind_phys,(pres1(k)-ep_3*esat)) 
 
-            !COMPUTE CLDFRA & QC_BL FROM MASS-FLUX SCHEME and recompute vt & vq
-            xl = xl_blend(tk1(k))               ! obtain blended heat capacity
-            qsat_tk = qsat_blend(tk1(k),pres1(k))! get saturation water vapor mixing ratio
-                                                !   at t and p
-            rsl = xl*qsat_tk / (r_v*tk1(k)**2)  ! slope of C-C curve at t (abs temp)
-                                                ! CB02, Eqn. 4
-            cpm = cp + qt1(k)*cpv               ! CB02, sec. 2, para. 1
-            a   = one/(one + xl*rsl/cpm)        ! CB02 variable "a"
-            b9  = a*rsl                         ! CB02 variable "b" 
+          !COMPUTE CLDFRA & QC_BL FROM MASS-FLUX SCHEME and recompute vt & vq
+          xl = xl_blend(tk1(k))               ! obtain blended heat capacity
+          qsat_tk = qsat_blend(tk1(k),pres1(k))! get saturation water vapor mixing ratio
+                                              !   at t and p
+          rsl = xl*qsat_tk / (r_v*tk1(k)**2)  ! slope of C-C curve at t (abs temp)
+                                              ! CB02, Eqn. 4
+          cpm = cp + qt1(k)*cpv               ! CB02, sec. 2, para. 1
+          a   = one/(one + xl*rsl/cpm)        ! CB02 variable "a"
+          b9  = a*rsl                         ! CB02 variable "b" 
 
-            q2p = xlvcp/ex1(k)
-            pt  = thl1(k) +q2p*QCp*Aup ! potential temp (env + plume)
-            bb  = b9*tk1(k)/pt ! bb is "b9" in BCMT95.  Their "b9" differs from
-                           ! "b9" in CB02 by a factor
-                           ! of T/theta.  Strictly, b9 above is formulated in
-                           ! terms of sat. mixing ratio, but bb in BCMT95 is
-                           ! cast in terms of sat. specific humidity.  The
-                           ! conversion is neglected here.
-            qww   = one+p608*qt1(k)
-            alpha = p608*pt
-            beta  = pt*xl/(tk1(k)*cp) - 1.61_kind_phys*pt
-            !Buoyancy flux terms have been moved to the end of this section...
+          q2p = xlvcp/ex1(k)
+          pt  = thl1(k) +q2p*QCp*Aup ! potential temp (env + plume)
+          bb  = b9*tk1(k)/pt ! bb is "b9" in BCMT95.  Their "b9" differs from
+                             ! "b9" in CB02 by a factor
+                             ! of T/theta.  Strictly, b9 above is formulated in
+                             ! terms of sat. mixing ratio, but bb in BCMT95 is
+                             ! cast in terms of sat. specific humidity.  The
+                             ! conversion is neglected here.
+          qww   = one+p608*qt1(k)
+          alpha = p608*pt
+          beta  = pt*xl/(tk1(k)*cp) - 1.61_kind_phys*pt
+          !Buoyancy flux terms have been moved to the end of this section...
 
-            !Now calculate convective component of the cloud fraction:
-            if (a > zero) then
-               f = MIN(one/a, four)      ! f is vertical profile scaling function (CB2005)
-            else
-               f = one
-            endif
+          !Now calculate convective component of the cloud fraction:
+          if (a > zero) then
+             f = MIN(one/a, four)      ! f is vertical profile scaling function (CB2005)
+          else
+             f = one
+          endif
 
-            !---CB form:
-            !sigq = 3.5E-3 * Aup * edmf_w1(k) * f  ! convective component of sigma (CB2005)
-            !sigq = SQRT(sigq**2 + sgm1(k)**2)     ! combined conv + stratus components
+          !---CB form:
+          !sigq = 3.5E-3 * Aup * edmf_w1(k) * f  ! convective component of sigma (CB2005)
+          !sigq = SQRT(sigq**2 + sgm1(k)**2)     ! combined conv + stratus components
 
-            !---Per S.DeRoode 2009?
-            !sigq = nine * Aup * (QTp - qt1(k))
+          !---Per S.DeRoode 2009?
+          !sigq = nine * Aup * (QTp - qt1(k))
 
-            !---Extended CB form, tauc is timescale similar to the eddy turnover timescale.
-            tauc = 1800._kind_phys
-            sigq = five * Aup * edmf_w1(k) * max(4e-3_kind_phys, tauc*max(zero, dqwdz))
+          !---Extended CB form, tauc is timescale similar to the eddy turnover timescale.
+          tauc = 1800._kind_phys
+          sigq = five * Aup * edmf_w1(k) * max(4e-3_kind_phys, tauc*max(zero, dqwdz))
 
-            !constrain sigq wrt saturation:
-            !sigq = max(sigq, qsat_tk*0.03_kind_phys)
-            !constrain sigq wrt moisture excess in the updraft (deRoode)
-            sigq = max(sigq, three * Aup * (QTp - qt1(k)))
-            sigq = min(sigq, qsat_tk*p666)
-            !sigq = SQRT(sigq**2 + sgm1(k)**2)     ! combined conv + stratus components
-            !sigq = max(sigq, sgm1(k))             ! use max of conv + stratus components
+          !constrain sigq wrt saturation:
+          !sigq = max(sigq, qsat_tk*0.03_kind_phys)
+          !constrain sigq wrt moisture excess in the updraft (deRoode)
+          sigq = max(sigq, three * Aup * (QTp - qt1(k)))
+          !sigq = SQRT(sigq**2 + sgm1(k)**2)     ! combined conv + stratus components
+          !sigq = max(sigq, sgm1(k))             ! use max of conv + stratus components
 
-            !qmq = a * (qt1(k) - qsat_tk)          ! saturation deficit/excess;
-            qmq = qt1(k) - qsat_tk                ! saturation deficit/excess;
-            if (qmq > zero) sigq = min(qsat_tk*0.015_kind_phys, sigq)
-            Q1  = qmq/sigq                        !   the numerator of Q1
+          !qmq = a * (qt1(k) - qsat_tk)          ! saturation deficit/excess;
+          qmq = qt1(k) - qsat_tk                ! saturation deficit/excess;
+          if (qmq > zero) sigq = min(qsat_tk*0.015_kind_phys, sigq)
+          Q1  = qmq/sigq                        !   the numerator of Q1
 
-            if ((landsea-1.5).GE.zero) then   ! WATER
-               !modified form from LES
-               !cf_mf = min(max(0.5 + 0.36 * atan(1.20*(Q1+0.2)),0.01),0.6)
-               !Original CB
-               !cf_mf = min(max(p5 + 0.36_kind_phys * atan(1.55*Q1),0.01_kind_phys),0.8_kind_phys)
-               cf_mf = min(max(p5 + 0.36_kind_phys * atan(1.8_kind_phys*(Q1+p2)),0.01_kind_phys), one)
-               cf_mf = max(cf_mf, 1.2_kind_phys * Aup)
-               !cf_mf = min(cf_mf, 5.0 * Aup)
-            else                              ! LAND
-               !LES form
-               !cf_mf = min(max(0.5 + 0.36 * atan(1.20*(Q1+0.4)),0.01),0.6)
-               !Original CB
-               !cf_mf = min(max(p5 + 0.36_kind_phys * atan(1.55*Q1),0.01_kind_phys),0.8_kind_phys)
-	       cf_mf = min(max(p5 + 0.36_kind_phys * atan(1.8_kind_phys*(Q1+p2)),0.01_kind_phys), one)
-               cf_mf = max(cf_mf, 1.8_kind_phys * Aup)
-               !cf_mf = min(cf_mf, 5.0 * Aup)
-            endif
+          if ((landsea-1.5).GE.zero) then   ! WATER
+             !modified form from LES
+             !cf_mf = min(max(0.5 + 0.36 * atan(1.20*(Q1+0.2)),0.01),0.6)
+             !Original CB
+             !cf_mf = min(max(p5 + 0.36_kind_phys * atan(1.55*Q1),0.01_kind_phys),0.8_kind_phys)
+             !increase cf in cases of large mf at cloudbase
+             cffac = min(max(zero, mf_at_cb - 0.05_kind_phys)/0.05_kind_phys, one)
+             cf_mf = min(max(p5 + 0.36_kind_phys * atan(1.8_kind_phys*(Q1+p2+cffac)),0.01_kind_phys), one)
+             cf_mf = max(cf_mf, 1.2_kind_phys * Aup)
+             !cf_mf = max(cf_mf, 1.8_kind_phys * Aup)
+             !cf_mf = min(cf_mf, 5.0 * Aup)
+          else                              ! LAND
+             !LES form
+             !cf_mf = min(max(0.5 + 0.36 * atan(1.20*(Q1+0.4)),0.01),0.6)
+             !Original CB
+             !cf_mf = min(max(p5 + 0.36_kind_phys * atan(1.55*Q1),0.01_kind_phys),0.8_kind_phys
+             cf_mf = min(max(p5 + 0.36_kind_phys * atan(1.8_kind_phys*(Q1+p2)),0.01_kind_phys), one)
+             cf_mf = max(cf_mf, 1.8_kind_phys * Aup)
+             !cf_mf = min(cf_mf, 5.0 * Aup)
+          endif
 
-            !if ( debug_mf == 1 .and. i==idbg .and. j==jdbg) then
-            !   print*,"In MYNN-MF, macrophysics component"
-            !   print*," env qt=",qt1(k)," qsat=",qsat_tk
-            !   print*," k=",k," satdef=",QTp - qsat_tk," sgm=",sgm1(k)
-            !   print*," sigq=",sigq," qmq=",qmq," tk=",tk1(k)
-            !   print*," cf_mf=",cf_mf," cldfra_bl=",cldfra_bl1(k)," edmf_a1=",edmf_a1(k)
-            !endif
+          !if ( debug_mf == 1 .and. i==idbg .and. j==jdbg) then
+          !   print*,"In MYNN-MF, macrophysics component"
+          !   print*," env qt=",qt1(k)," qsat=",qsat_tk
+          !   print*," k=",k," satdef=",QTp - qsat_tk," sgm=",sgm1(k)
+          !   print*," sigq=",sigq," qmq=",qmq," tk=",tk1(k)
+          !   print*," cf_mf=",cf_mf," cldfra_bl=",cldfra_bl1(k)," edmf_a1=",edmf_a1(k)
+          !endif
 
-            !Update cloud fractions and specific humidities in grid cells
-            !where the mass-flux scheme is active. The specific humidities
-            !are converted to grid means (not in-cloud quantities).
-            if ((landsea-1.5).GE.zero) then  ! water
-               if (QCp * Aup > 5e-5) then
-                  qc_mf     = 1.86_kind_phys * (QCp * Aup) - 2.2e-5_kind_phys
-               else
-                  qc_mf     = 1.20_kind_phys * (QCp * Aup)
-               endif
-            else                             ! land
-               if (QCp * Aup > 5e-5) then
-                  qc_mf     = 1.86_kind_phys * (QCp * Aup) - 2.2e-5_kind_phys
-               else
-                  qc_mf     = 1.20_kind_phys * (QCp * Aup)
-               endif
-            endif
+          !Update cloud fractions and specific humidities in grid cells
+          !where the mass-flux scheme is active. The specific humidities
+          !are converted to grid means (not in-cloud quantities).
+          qcfac = 1.20_kind_phys + 1.0_kind_phys*min(max(zero, mf_at_cb - 0.04_kind_phys)/0.05_kind_phys, one)
+          if ((landsea-1.5).GE.zero) then  ! water
+             !if (QCp * Aup > 5e-5) then
+             !   qc_mf     = 1.86_kind_phys * (QCp * Aup) - 2.2e-5_kind_phys
+             !else
+             !   qc_mf     = 1.20_kind_phys * (QCp * Aup)
+             !endif
+             qc_mf     = qcfac * (QCp * Aup) 
+          else                             ! land
+             if (QCp * Aup > 5e-5) then
+                qc_mf     = 1.86_kind_phys * (QCp * Aup) - 2.2e-5_kind_phys
+             else
+                qc_mf     = 1.20_kind_phys * (QCp * Aup)
+             endif
+          endif
             !In the condition of very large cloud fractions, where the instantaneous
             !condensed water in the plume is not a reasonable estimate of the
             !mixing ratio in a larger cloud, we must rely on a background estimate based
