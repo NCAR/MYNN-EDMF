@@ -1618,7 +1618,7 @@ CONTAINS
       &afk,abk,rf
  real(kind_phys):: a2fac,thv1,thv0,eth0,eth1,lambda,qsat, &
       &xl,tabs,clam0,clam,wt,mfi,qkei,cldfrai,ugrid,      &
-      &uonset,taper
+      &cfac,uonset,taper
  real(kind_phys), parameter:: thvp = 0.0 !0.25 !percentage of thv in blend
 
 !    ev  = 2.5e6
@@ -1726,7 +1726,11 @@ CONTAINS
           
           !control factor for cloudy grid cells and/or have nonzero mass flux
           cldfrai =  p5*(cldfra(k)+cldfra(k-1)) !avg cloud fraction at interface
-          cldfrai = min(p1, cldfrai)*ten
+          !cldfrai = min(p1, cldfrai)*ten
+!test
+          !cfac    = one - min(1.99_kind_phys*max(zero, cldfrai - 0.4_kind_phys), 0.99_kind_phys)
+          cfac    = max( 0.01_kind_phys, min(2.7_kind_phys * (cldfrai - one)**2, one))
+          cldfrai = min(p1, cldfrai*cfac)*ten
           !cldfrai  = max(ncld, min(p1,mfi)) !TEST: always allow some destabilization in grid cells with plumes.
           
           !lambda significantly departs from OGorman (2011) by using MYNN-EDMF-specific information: 
