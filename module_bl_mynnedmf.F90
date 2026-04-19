@@ -1076,13 +1076,16 @@ CONTAINS
             &sd_awu1,sd_awv1,                         &
             &sd_awqke1,                               &
             &tkeprod_dn,el1,                          &
-            &rthraten1                                )
-    elseif (bl_mynn_edmf_dd == 2) then
-       call topdown_cloudrad(kts,kte,dz1,zw1,fltv,    &
-            &xland,kpbl,PBLH,                         &
-            &sqc1,sqi1,sqw1,thl1,th1,ex1,pres1,rho1,thv1,&
-            &cldfra_bl1,rthraten1,                    &
-            &TKEprod_dn                               )
+            &rthraten1,psig_bl                        )
+       !make sure there is some tke production for shallow fog,
+       !when the nonlocal (mf) approach is no longer appropriate.
+       call topdown_cloudrad(kts,kte,                 &
+            &dz1,zw1,fltv,u1(kts),v1(kts),            &
+            &xland,kpbl,pblh,                         &
+            &sqc1,sqi1,sqw1,thl1,th1,                 &
+            &ex1,pres1,rho1,thv1,                     &
+            &cldfra_bl1,qc_bl1,qi_bl1,rthraten1,      &
+            &tkeprod_dn,psig_bl                       )
     endif
 
     !Capability to substep the eddy-diffusivity portion
@@ -3051,6 +3054,9 @@ CONTAINS
        ! impose minimum for clouds
        sm(k) = max(sm(k), 0.04_kind_phys*min(cldavg, p5) )
        sh(k) = max(sh(k), 0.04_kind_phys*min(cldavg, p5) )
+       ! impose minimum for tkeprod_down
+       if (tkeprod_dn(k)>1e-6) sm(k) = max(sm(k), 0.01_kind_phys)
+       if (tkeprod_dn(k)>1e-6) sh(k) = max(sh(k), 0.01_kind_phys)
        ! impose minimum sm for tte configurations. this may overide Pr limitations above.
        if (closure .eq. 2.7) then
           sm(k) = max(sm(k),min(p2, max(zero,three*qpe(k))))
@@ -7876,7 +7882,7 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
               &sd_awqnwfa,sd_awqnifa,                &
               &sd_awu,sd_awv,sd_awqke,               &
               &tkeprod_dn,el,                        &
-              &rthraten                              )
+              &rthraten,psig                         )
 
         integer, intent(in) :: kts,kte,kpbl
         real(kind_phys), dimension(kts:kte), intent(in) ::            &
@@ -7886,7 +7892,7 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
         ! zw .. heights of the downdraft levels (edges of boxes)
         real(kind_phys), dimension(kts:kte+1), intent(in) :: zw
         real(kind_phys), intent(in)  :: flt,flq,fltv
-        real(kind_phys), intent(in)  :: dt,dx,ust,pblh
+        real(kind_phys), intent(in)  :: dt,dx,ust,pblh,psig
   ! outputs - downdraft properties
         real(kind_phys), dimension(kts:kte), intent(inout) ::         &
         edmf_a_dd,   edmf_w_dd,   edmf_qt_dd,  edmf_thl_dd,           &
@@ -8047,12 +8053,8 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
       add = min( f0*0.002, 0.3_kind_phys)
       !taper off area for high wind speeds
       wspd_pbl=SQRT(MAX(u(kts)**2 + v(kts)**2, 0.01_kind_phys))
-      if (wspd_pbl .le. 10.) then
-         ac_wsp = one
-      else
-         ac_wsp = one - min((wspd_pbl - 10.0)/15., one)
-      endif
-      add  = add * ac_wsp
+      ac_wsp = one - min(max(zero, wspd_pbl - 10._kind_phys)/15._kind_phys, one)
+      add  = add * min(ac_wsp, psig)
 
       !find inversion strength across cloud top entrainment zone--normalized to 200 m vertical grid spacing
       dz_ent      = p5 * (dz(qltop+1) + dz(qltop))
@@ -8200,7 +8202,8 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
             wmin = p1 + ddd*0.0005
             !ent(k,i) = 0.33/(min(max(abs(downw(k+1,i)),wmin),0.9)*ddd)
             !ent(k,i) = 0.53/(min(max(abs(downw(k+1,i)),wmin),0.6)*ddd)
-            ent(k,i) = 0.26/(min(max(abs(downw(k+1,i)),wmin),0.6)*ddd)
+            !was       0.26  before reducing downdraft sizes
+            ent(k,i) = 0.17/(min(max(abs(downw(k+1,i)),wmin),0.6)*ddd)
             
             !minimum background entrainment and 1/z enhancement near surface
             ent(k,i) = max(ent(k,i),0.0003)
@@ -8682,120 +8685,139 @@ SUBROUTINE SCALE_AWARE(dx,pblh,Psig_bl,Psig_shcu)
 
 end function phih
 ! ==================================================================
- SUBROUTINE topdown_cloudrad(kts,kte,                         &
-               &dz1,zw,fltv,xland,kpbl,PBLH,                  &
+ subroutine topdown_cloudrad(kts,kte,                         &
+               &dz1,zw,fltv,u1,v1,xland,kpbl,pblh,            &
                &sqc,sqi,sqw,thl,th1,ex1,pres1,rho1,thv,       &
-               &cldfra_bl1,rthraten,                          &
-               &maxKHtopdown,KHtopdown,TKEprodTD              )
+               &cldfra_bl1,qc_bl,qi_bl,rthraten,              &
+               &tkeprod_dn,psig                               )
 
     !input
     integer,         intent(in) :: kte,kts
     real(kind_phys), dimension(kts:kte), intent(in) :: dz1,sqc,sqi,sqw,&
-          thl,th1,ex1,pres1,rho1,thv,cldfra_bl1
+          thl,th1,ex1,pres1,rho1,thv,cldfra_bl1,qc_bl,qi_bl
     real(kind_phys), dimension(kts:kte), intent(in) :: rthraten
     real(kind_phys), dimension(kts:kte+1), intent(in) :: zw
-    real(kind_phys), intent(in) :: pblh,fltv
+    real(kind_phys), intent(in) :: pblh,fltv,u1,v1,psig
     real(kind_phys), intent(in) :: xland
     integer        , intent(in) :: kpbl
-    !output
-    real(kind_phys), intent(out) :: maxKHtopdown
-    real(kind_phys), dimension(kts:kte), intent(out) :: KHtopdown,TKEprodTD
+    !output - production of tke from cloud-top radiative cooling
+    real(kind_phys), dimension(kts:kte), intent(inout) :: tkeprod_dn
     !local
-    real(kind_phys), dimension(kts:kte) :: zfac,wscalek2,zfacent
-    real(kind_phys) :: bfx0,wm2,wm3,bfxpbl,dthvx,tmp1
-    real(kind_phys) :: temps,templ,zl1,wstar3_2
-    real(kind_phys) :: ent_eff,radsum,radflux,we,rcldb,rvls,minrad,zminrad
+    real(kind_phys),parameter:: pblh500 = 500.  !scale height for pbl
+    real(kind_phys), dimension(kts:kte) :: zfac,zfacent,tkeprodorig
+    real(kind_phys) :: bfx0,wm3,bfxpbl,dthvx,tmp1,zfacent_max,zagl
+    real(kind_phys) :: temps,templ,zl1,wstar3_2,dz_ent
+    real(kind_phys) :: ent_eff,radmax,radflux,we,rcldb,rvls,minrad,zminrad
+    real(kind_phys) :: wspd_pbl,ac_wsp
     real(kind_phys), parameter :: pfac =2.0, zfmin = 0.01, phifac=8.0
     integer :: k,kk,kminrad
     logical :: cloudflg
+    logical,parameter:: debug=.false. 
 
-    cloudflg=.false.
-    minrad=100.
-    kminrad=kpbl
-    zminrad=PBLH
-    KHtopdown(kts:kte)=zero
-    TKEprodTD(kts:kte)=zero
-    maxKHtopdown=zero
-
-    !CHECK FOR STRATOCUMULUS-TOPPED BOUNDARY LAYERS
-    DO kk = MAX(1,kpbl-2),kpbl+3
-       if (sqc(kk).gt. 1.e-6 .OR. sqi(kk).gt. 1.e-6 .OR. &
-           cldfra_bl1(kk).gt.0.5) then
-          cloudflg=.true.
+    cloudflg = .false.
+    minrad   = one
+    kminrad  = kpbl
+    zminrad  = PBLH
+    !save the tke production from the downdraft scheme for comparison
+    tkeprodorig(kts:kte)=tkeprod_dn(kts:kte)
+    
+    !check for stratocumulus- or fog-tops
+    do k = 1,kpbl+10
+       if (cldfra_bl1(k)>0.5 .and. cldfra_bl1(k+1)<0.5 .and. rthraten(k)*3600. < -0.25) then
+          cloudflg = .true.
+          minrad   = rthraten(k)
+          kminrad  = k
+          zminrad  = zw(k) + p5*dz1(k) !Best estimate of height of TKE source (top of downdrafts)
        endif
-       if (rthraten(kk) < minrad)then
-          minrad=rthraten(kk)
-          kminrad=kk
-          zminrad=zw(kk) + 0.5*dz1(kk)
-       endif
-    ENDDO
+       if (cloudflg .eq. .true.) exit
+    enddo
 
-    IF (MAX(kminrad,kpbl) < 2)cloudflg = .false.
-    IF (cloudflg) THEN
-       zl1 = dz1(kts)
-       k = MAX(kpbl-1, kminrad-1)
-       !Best estimate of height of TKE source (top of downdrafts):
-       !zminrad = 0.5*pblh(i) + 0.5*zminrad
+    if (cloudflg) then
+       zl1 = p25*dz1(kts)
+       k   = kminrad
 
        templ=thl(k)*ex1(k)
        !rvls is ws at full level
-       rvls=100.*6.112*EXP(17.67*(templ-273.16)/(templ-29.65))*(ep_2/pres1(k+1))
-       temps=templ + (sqw(k)-rvls)/(cp/xlv  +  ep_2*xlv*rvls/(r_d*templ**2))
-       rvls=100.*6.112*EXP(17.67*(temps-273.15)/(temps-29.65))*(ep_2/pres1(k+1))
-       rcldb=max(sqw(k)-rvls,zero)
+       rvls    = 100.*6.112*EXP(17.67*(templ-273.16)/(templ-29.65))*(ep_2/pres1(k+1))
+       temps   = templ + (sqw(k)-rvls)/(cp/xlv  +  ep_2*xlv*rvls/(r_d*templ**2))
+       rvls    = 100.*6.112*EXP(17.67*(temps-273.15)/(temps-29.65))*(ep_2/pres1(k+1))
+       rcldb   = max(sqw(k)-rvls,zero)         !resolved cloud water
+       rcldb   = max(rcldb, qc_bl(k)+qi_bl(k)) !any type of cloud water (sgs or resolved)
 
        !entrainment efficiency
-       dthvx     = (thl(k+2) + th1(k+2)*p608*sqw(k+2)) &
-                 - (thl(k)   + th1(k)  *p608*sqw(k))
-       dthvx     = max(dthvx,p1)
-       tmp1      = xlvcp * rcldb/(ex1(k)*dthvx)
+       dthvx   = (thl(k+2) + th1(k+2)*p608*sqw(k+2)) - &
+                 (thl(k)   + th1(k)  *p608*sqw(k))
+       !reduce vertical resolution sensitivity; normalize to 200 m depth
+       dz_ent  = (dz1(k  )*dz1(k+1)+dz1(k+1)*dz1(k  ))/(dz1(k+1)+dz1(k)) + &
+                   (dz1(k+1)*dz1(k+2)+dz1(k+2)*dz1(k+1))/(dz1(k+1)+dz1(k+2)) 
+       dthvx   = dthvx * 200._kind_phys/dz_ent  !normalized gradient
+       dthvx   = max(dthvx, p1)
+       tmp1    = xlvcp * rcldb/(ex1(k)*dthvx)
        !Originally from Nichols and Turton (1986), where a2 = 60, but lowered
        !here to 8, as in Grenier and Bretherton (2001).
-       ent_eff   = p2 + p2*eight*tmp1
+       ent_eff = p2 + p2*eight*tmp1
 
-       radsum=0.
-       DO kk = MAX(1,kpbl-3),kpbl+3
-          radflux=rthraten(kk)*ex1(kk)         !converts theta/s to temp/s
-          radflux=radflux*cp/grav*(pres1(kk)-pres1(kk+1)) ! converts temp/s to W/m^2
-          if (radflux < zero ) radsum=abs(radflux)+radsum
-       ENDDO
+       radmax=zero
+       do kk = max(kts,kminrad-1),kminrad+1
+          radflux = rthraten(kk)*ex1(kk)                    !converts theta/s to temp/s
+          radflux = radflux*cp/grav*(pres1(kk)-pres1(kk+1)) !converts temp/s to w/m^2
+          if (radflux < zero ) radmax=max(abs(radflux),radmax) !max cooling
+       enddo
 
-       !More strict limits over land to reduce stable-layer mixouts
-       if ((xland-1.5).GE.0)THEN      ! WATER
-          radsum=MIN(radsum,90.0)
-          bfx0 = max(radsum/rho1(k)/cp, zero)
-       else                           ! LAND
-          radsum=MIN(p25*radsum,30.0)!practically turn off over land
-          bfx0 = max(radsum/rho1(k)/cp - max(fltv,zero), zero)
+       !more strict limits over land to reduce stable-layer mixouts
+       if ((xland-1.5).ge.zero) then     ! water
+          radmax = min(radmax, 150.0_kind_phys)
+          bfx0   = max(radmax/rho1(k)/cp, zero)
+       else                              ! land - limited considerably
+          radmax = min(p25*radmax,30._kind_phys)
+          bfx0   = max(radmax/rho1(k)/cp, zero)
        endif
 
-       !entrainment from PBL top thermals
-       wm3    = grav/thv(k)*bfx0*MIN(pblh,1500.) ! this is wstar3(i)
-       wm2    = wm2 + wm3**p666
-       bfxpbl = - ent_eff * bfx0
+       !entrainment from pbl top thermals
+       wm3    = grav/thv(k)*bfx0*pblh500 ! this is wstar3
+       bfxpbl = -ent_eff * bfx0
        dthvx  = max(thv(k+1)-thv(k),p1)
        we     = max(bfxpbl/dthvx,-sqrt(wm3**p666))
 
-       DO kk = kts,kpbl+3
-          !Analytic vertical profile
-          zfac(kk) = min(max((one-(zw(kk+1)-zl1)/(zminrad-zl1)),zfmin),one)
-          zfacent(kk) = ten*MAX((zminrad-zw(kk+1))/zminrad,zero)*(one-zfac(kk))**3
+       do k = kts,kminrad+3
+          !for fog at k=1, make min height above ground (zagl) larger than first model deptk
+          zagl         = zw(k) + p5*dz1(k)
+          if (k==kts .and. kminrad==kts) zagl = 0.4_kind_phys * dz1(kts)
+          !analytic vertical profile
+          zfac(k)      = min(max((one-(zagl-zl1)/(zminrad-zl1)), zfmin), one)
+          zfacent(k)   = max((zminrad-zagl)/zminrad, zero)*(one-zfac(k))**3
+       enddo
+       zfacent_max = maxval(zfacent(kts:kminrad+3))
+       zfacent     = zfacent/max(zfacent_max, 1e-5_kind_phys)  !normalize zfacent
+       do k = kts,kminrad+3
+          !calculate tke production = 2(g/th)(w'th'), where w'th' = a(th/g)wstar^3/pblh,
+          !a = ent_eff, and wstar is associated with the radiative cooling at top of pbl.
+          !an analytic profile controls the magnitude of this tke prod in the vertical.
+          tkeprod_dn(k) = max(tkeprod_dn(k), p2*ent_eff*wm3/pblh500*zfacent(k))
+          tkeprod_dn(k) = max(tkeprod_dn(k), zero)
+       enddo
+       !make sure there is some TKE source at the max cooling level
+       tkeprod_dn(kminrad)=max(tkeprod_dn(kminrad),p333*tkeprod_dn(max(kts,kminrad-1)))
+       !make sure there is a small TKE source above the max cooling level
+       tkeprod_dn(kminrad+1)=max(tkeprod_dn(kminrad+1),p2*tkeprod_dn(max(kts,kminrad)))
+       !taper off tke production in high-wind conditions and at high resolutions
+       wspd_pbl  = SQRT(MAX(u1**2 + v1**2, 0.01_kind_phys))
+       ac_wsp    = one - min(max(zero, wspd_pbl - 10._kind_phys)/15._kind_phys, one)
+       tkeprod_dn = tkeprod_dn * min(ac_wsp, psig)
+    endif !end cloud check
 
-          !Calculate an eddy diffusivity profile (not used at the moment)
-          wscalek2(kk) = (phifac*karman*wm3*(zfac(kk)))**p333
-          !Modify shape of Kh to be similar to Lock et al (2000): use pfac = 3.0
-          KHtopdown(kk) = wscalek2(kk)*karman*(zminrad-zw(kk+1))*(one-zfac(kk))**3 !pfac
-          KHtopdown(kk) = MAX(KHtopdown(kk),zero)
-
-          !Calculate TKE production = 2(g/TH)(w'TH'), where w'TH' = A(TH/g)wstar^3/PBLH,
-          !A = ent_eff, and wstar is associated with the radiative cooling at top of PBL.
-          !An analytic profile controls the magnitude of this TKE prod in the vertical.
-          TKEprodTD(kk)=two*ent_eff*wm3/MAX(pblh,hundred)*zfacent(kk)
-          TKEprodTD(kk)= MAX(TKEprodTD(kk),zero)
-       ENDDO
-    ENDIF !end cloud check
-    maxKHtopdown=MAXVAL(KHtopdown(:))
-
+    if (cloudflg .and. debug) then
+       !debug printouts
+       print *, '-----------------------------------------------------------------'
+       print *, ' kminrad=',kminrad,' radmax(per hr)=',radmax
+       print *, ' ent_eff=',ent_eff,' w*=',wm3,' pblh=',pblh
+       print *, '  k    cldfra   dT/dt(hr)  dTKE/dt_orig dTKE/dt(hr)  zfacent'
+       print *, '-----------------------------------------------------------------'
+       do k = kminrad+3,kts,-1
+          print '(I4,5F11.5)', k, cldfra_bl1(k), rthraten(k)*3600., tkeprodorig(k)*3600., tkeprod_dn(k)*3600.,  zfacent(k) 
+       enddo
+    endif
+    
  END SUBROUTINE topdown_cloudrad
 ! ==================================================================
 ! ===================================================================
