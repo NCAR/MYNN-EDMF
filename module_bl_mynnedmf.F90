@@ -1864,9 +1864,6 @@ CONTAINS
                                      !! layer stops growing for PBLHs > 2.5 km.
     real(kind_phys), parameter :: mindz       = 250.  !< min (half) transition layer depth
 
-    !SURFACE LAYER LENGTH SCALE MODS TO REDUCE IMPACT IN UPPER BOUNDARY LAYER
-    real(kind_phys), parameter :: ZSLH        = 100.  !< Max height correlated to surface conditions (m)
-    real(kind_phys), parameter :: CSL         = 2.    !< CSL = constant of proportionality to L O(1)
     real(kind_phys), parameter :: qkw_elb_min = 0.05  !this assumes some minumum TKE/TPE is present 
 
     integer :: i,j,k
