@@ -6302,7 +6302,7 @@ do while (zw1(k) .le. 200.)
 enddo
 
 !> - FIND THETAV-BASED PBLH (BEST FOR DAYTIME).
-pblh=0.
+pblh=zero
 k = kthv+1
 if ((landsea-1.5) .ge. zero) then
    ! WATER
@@ -6321,7 +6321,7 @@ do k=kts+1,kte-1
       & max(thv1(k)-thv1(k-1),1E-6_kind_phys),one)
    endif
    if (k .EQ. kte-1) pblh = zw1(kts+1) !EXIT SAFEGUARD
-   if (pblh .NE. zero) exit
+   if (pblh .gt. zero) exit
 enddo
 !print*,"IN GET_PBLH:",thsfc,pblh
 
@@ -6735,7 +6735,7 @@ END SUBROUTINE GET_PBLH
 
  !Completely shut off MF scheme for strong resolved-scale vertical velocities.
  fltv2 = fltv
- if (Psig_w == zero .and. fltv > zero) fltv2 = -1.*fltv
+ if (Psig_w < 1e-2_kind_phys .and. fltv > zero) fltv2 = -1.*fltv
 
  if (debug_mf == 1 .and. i==idbg .and. j==jdbg) then
     print*,"===criteria for small w in pbl:"
@@ -7117,13 +7117,13 @@ END SUBROUTINE GET_PBLH
 
           !Check to make sure that the plume made it up at least one level.
           !if it failed, then set nup2=0 and exit the mass-flux portion.
-          IF (k==kts+1 .AND. Wn == zero) THEN
-             NUP2=0
+          if (k==kts+1 .and. wn < 1e-8) then
+             nup2=0
              exit
-          ENDIF
+          endif
 
-          IF (debug_mf == 1 .and. i==idbg .and. j==jdbg) THEN
-            IF (Wn .GE. 3.0) THEN
+          if (debug_mf == 1 .and. i==idbg .and. j==jdbg) then
+            if (wn .ge. 3.0) then
               ! surface values
               print *," **** SUSPICIOUSLY LARGE W:"
               print *,' QCn:',QCn,' ENT=',ENT(k,ip),' Nup2=',Nup2
@@ -7331,7 +7331,7 @@ END SUBROUTINE GET_PBLH
    !Flux limiter: Check ratio of heat flux at top of first model layer
    !and at the surface. Make sure estimated flux out of the top of the
    !layer is < fluxportion*surface_heat_flux
-   IF (s_aw1(kts+1) /= 0.) THEN
+   IF (abs(s_aw1(kts+1)) > 1e-8_kind_phys) THEN
       flx1 = max(s_aw1(kts+1)*(thv1(kts)-thv1(kts+1))/dzi(kts+1),1.0e-6_kind_phys)
    ELSE
       flx1 = zero
@@ -7399,7 +7399,7 @@ END SUBROUTINE GET_PBLH
          edmf_qt1(k) =edmf_qt1(k) +upak*(upqt(k+1,ip)*dzi(k) + upqt(k,ip)*dzi(k+1))/(dzi(k+1)+dzi(k))
          edmf_thl1(k)=edmf_thl1(k)+upak*(upthl(k+1,ip)*dzi(k)+ upthl(k,ip)*dzi(k+1))/(dzi(k+1)+dzi(k))
          edmf_ent1(k)=edmf_ent1(k)+upak*(ent(k+1,ip)*dzi(k)  + ent(k,ip)*dzi(k+1))/(dzi(k+1)+dzi(k))
-         if (upqc(k,ip) .eq. zero .and. upqc(k+1,ip) > zero) then
+         if (abs(upqc(k,ip)) < 1e-10_kind_phys .and. upqc(k+1,ip) > zero) then
             !mass at cloud base is kept equal to the interface value
             edmf_qc1(k) =edmf_qc1(k) +upak*upqc(k+1,ip)
          else
@@ -8318,7 +8318,7 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
                ecoeff = -2.0
             else
                bcoeff = 0.2*min(zw(k)/pblh, one)
-               ecoeff = -2.0 - max(0.5*pblh-zw(k), zero)/(0.5*pblh)
+               ecoeff = -2.0 - max(p5*pblh-zw(k), zero)/(p5*pblh)
                buoy   = buoy*min(zw(k)/pblh, one)
             endif
             if (k==kts+2) buoy=max(buoy,0.01)
@@ -8804,7 +8804,7 @@ end function phih
           kminrad  = k
           zminrad  = zw(k) + p5*dz1(k) !Best estimate of height of TKE source (top of downdrafts)
        endif
-       if (cloudflg .eq. .true.) exit
+       if (cloudflg) exit
     enddo
 
     if (cloudflg) then
