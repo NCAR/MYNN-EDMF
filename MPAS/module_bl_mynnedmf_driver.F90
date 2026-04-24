@@ -34,6 +34,8 @@
                   qoz               , rthraten          , pblh               , kpbl               , &
                   cldfra_bl         , qc_bl             , qi_bl              , maxwidth           , &
                   maxmf             , ztop_plume        , excess_h           , excess_q           , &
+                  maxwidth_dd       , maxmf_dd          , maxtkeprod         , cldtop_cooling     , &
+                  ent_eff           ,                                                               &
                   qke               ,                                                               &
                   qke_adv           , tsq               , qsq                , cov                , &
                   el_pbl            , rublten           , rvblten            , rthblten           , &
@@ -218,7 +220,12 @@
     maxmf,       &!
     ztop_plume,  &!
     excess_h,    &!
-    excess_q
+    excess_q,    &
+    maxwidth_dd, &
+    maxmf_dd,    &
+    maxtkeprod,  &
+    cldtop_cooling,&
+    ent_eff 
 
  real(kind=kind_phys),intent(out),dimension(ims:ime,kms:kme,jms:jme):: &
     exch_h,      &!
@@ -285,7 +292,8 @@
     subthl1,subsqv1,detthl1,detsqv1
 
  real(kind=kind_phys):: &
-    maxwidth1,maxmf1,ztopplume1,excessh1,excessq1
+     maxwidth1,maxmf1,ztopplume1,excessh1,excessq1, &
+     maxwidth_dd1,maxmf_dd1,maxtkeprod1,cldtop_cooling1,ent_eff1
 
  real(kind=kind_phys),dimension(kts:kte):: &
     exchh1,exchm1,dqke1,qwt1,qshear1,qbuoy1,qdiss1
@@ -494,7 +502,9 @@
             sub_thl1        = subthl1       , sub_sqv1    = subsqv1       , det_thl1    = detthl1      , &
             det_sqv1        = detsqv1       ,                                                            &
             maxwidth        = maxwidth1     , maxmf       = maxmf1        , ztop_plume  = ztopplume1   , &
-            excess_h        = excessh1      , excess_q    = excessq1      ,                              &
+            excess_h        = excessh1      , excess_q    = excessq1      , maxwidth_dd = maxwidth_dd1 , &
+            maxmf_dd        = maxmf_dd1     , maxtkeprod  =maxtkeprod1    , cldtop_cooling=cldtop_cooling1,&
+            ent_eff         = ent_eff1      ,                                                            &
             flag_qc         = f_qc          , flag_qi     = f_qi          , flag_qs     = f_qs         , &
             flag_ozone      = f_qoz         , flag_qnc    = f_nc          , flag_qni    = f_ni         , &
             flag_qnwfa      = f_nwfa        , flag_qnifa  = f_nifa        , flag_qnbca  = f_nbca       , &
@@ -615,11 +625,16 @@
     enddo
 
     !--- output arguments:
-    maxwidth(i,j)   = maxwidth1
-    maxmf(i,j)      = maxmf1
-    ztop_plume(i,j) = ztopplume1
-    excess_h(i,j)   = excessh1
-    excess_q(i,j)   = excessq1
+    maxwidth(i,j)      = maxwidth1
+    maxmf(i,j)         = maxmf1
+    ztop_plume(i,j)    = ztopplume1
+    excess_h(i,j)      = excessh1
+    excess_q(i,j)      = excessq1
+    maxwidth_dd(i,j)   = maxwidth_dd1
+    maxmf_dd(i,j)      = maxmf_dd1
+    maxtkeprod(i,j)    = maxtkeprod1
+    cldtop_cooling(i,j)= cldtop_cooling1
+    ent_eff(i,j)       = ent_eff1
 
     do k = kts,kte
        exch_h(i,k,j) = exchh1(k)
