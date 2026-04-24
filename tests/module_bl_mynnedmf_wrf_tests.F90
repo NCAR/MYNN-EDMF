@@ -98,7 +98,7 @@ module module_bl_mynnedmf_wrf_tests
         ! output 2D arrays
         real, allocatable :: excess_h(:,:), excess_q(:,:), maxmf(:,:),maxwidth(:,:),         &
              pblh(:,:),ztop_plume(:,:), maxwidth_dd(:,:), maxmx_dd(:,:), ent_eff(:,:),       &
-             maxtkeprod(:,:), cldtop_cooling(:,:),
+             maxtkeprod(:,:), cldtop_cooling(:,:)
         integer, allocatable :: kpbl(:,:)
         ! 3D arrays
         !real, allocatable, intent(inout) :: u(:,:,:), 
@@ -460,7 +460,7 @@ module module_bl_mynnedmf_wrf_tests
         ! Deallocate 2D arrays
         deallocate(xland,ps,ts,qsfc,ust,ch,hfx,qfx,wspd,znt,uoce,voce,        &
              kpbl,maxmf,maxwidth,pblh,ztop_plume,excess_h,excess_q,           &
-             maxwidth_dd,maxmf_dd,maxtkeprod,cldtop_cooling,ent_eff))
+             maxwidth_dd,maxmf_dd,maxtkeprod,cldtop_cooling,ent_eff)
         ! deallocate 3D arrays
         deallocate(u,v,w,th,t3d,p,exner,rho,qv,qc,qi)        
         deallocate(dz,exch_h,exch_m)
