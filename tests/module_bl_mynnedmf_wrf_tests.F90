@@ -97,7 +97,7 @@ module module_bl_mynnedmf_wrf_tests
                 hfx(:,:), qfx(:,:), wspd(:,:), znt(:,:), uoce(:,:), voce(:,:)
         ! output 2D arrays
         real, allocatable :: excess_h(:,:), excess_q(:,:), maxmf(:,:),maxwidth(:,:),         &
-             pblh(:,:),ztop_plume(:,:), maxwidth_dd(:,:), maxmx_dd(:,:), ent_eff(:,:),       &
+             pblh(:,:),ztop_plume(:,:), maxwidth_dd(:,:), maxmf_dd(:,:), ent_eff(:,:),       &
              maxtkeprod(:,:), cldtop_cooling(:,:)
         integer, allocatable :: kpbl(:,:)
         ! 3D arrays
