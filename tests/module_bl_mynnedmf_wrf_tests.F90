@@ -97,7 +97,8 @@ module module_bl_mynnedmf_wrf_tests
                 hfx(:,:), qfx(:,:), wspd(:,:), znt(:,:), uoce(:,:), voce(:,:)
         ! output 2D arrays
         real, allocatable :: excess_h(:,:), excess_q(:,:), maxmf(:,:),maxwidth(:,:),         &
-                pblh(:,:),ztop_plume(:,:)
+             pblh(:,:),ztop_plume(:,:), maxwidth_dd(:,:), maxmx_dd(:,:), ent_eff(:,:),       &
+             maxtkeprod(:,:), cldtop_cooling(:,:),
         integer, allocatable :: kpbl(:,:)
         ! 3D arrays
         !real, allocatable, intent(inout) :: u(:,:,:), 
@@ -196,6 +197,11 @@ module module_bl_mynnedmf_wrf_tests
         allocate(ztop_plume(ims:ime, jms:jme))
         allocate(excess_h(ims:ime, jms:jme))
         allocate(excess_q(ims:ime, jms:jme))
+        allocate(maxwidth_dd(ims:ime, jms:jme))
+        allocate(maxmf_dd(ims:ime, jms:jme))
+        allocate(ent_eff(ims:ime, jms:jme))
+        allocate(maxtkeprod(ims:ime, jms:jme))
+        allocate(cldtop_cooling(ims:ime, jms:jme))
         ! Allocate 3D arrays
         allocate(qBUOY(ims:ime, kms:kme, jms:jme))
         allocate(qDISS(ims:ime, kms:kme, jms:jme))
@@ -411,9 +417,10 @@ module module_bl_mynnedmf_wrf_tests
                   qc                , qi                , qs                 , qnc                , &
                   qni               , qnifa             , qnwfa              , qnbca              , &
 !                  qoz               ,                                                               &
-                  rthraten          , pblh              , kpbl               ,                      &
+                  rthraten          , pblh              , kpbl               , maxwidth_dd        , &
                   cldfra_bl         , qc_bl             , qi_bl              , maxwidth           , &
                   maxmf             , ztop_plume        , excess_h           , excess_q           , &
+                  maxmf_dd          , maxtkeprod        , cldtop_cooling     , ent_eff            , &
                   qke               , qke_adv           ,                                           &
                   tsq               , qsq               , cov                ,                      &
                   el_pbl            , rublten           , rvblten            , rthblten           , &
@@ -452,7 +459,8 @@ module module_bl_mynnedmf_wrf_tests
                 
         ! Deallocate 2D arrays
         deallocate(xland,ps,ts,qsfc,ust,ch,hfx,qfx,wspd,znt,uoce,voce,        &
-          kpbl,maxmf,maxwidth,pblh,ztop_plume,excess_h,excess_q)
+             kpbl,maxmf,maxwidth,pblh,ztop_plume,excess_h,excess_q,           &
+             maxwidth_dd,maxmf_dd,maxtkeprod,cldtop_cooling,ent_eff))
         ! deallocate 3D arrays
         deallocate(u,v,w,th,t3d,p,exner,rho,qv,qc,qi)        
         deallocate(dz,exch_h,exch_m)
