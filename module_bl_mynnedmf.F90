@@ -449,9 +449,10 @@ CONTAINS
              dqnwfa1            , dqnifa1           , dqnbca1           , &
              dozone1            , rthraten1         ,                     &
              !2d output
-             pblh               , kpbl              ,                     &
+             pblh               , kpbl              , maxwidth_dd       , &
              maxwidth           , maxmf             , ztop_plume        , &
-             excess_h           , excess_q          ,                     &
+             excess_h           , excess_q          , maxmf_dd          , &
+             maxtkeprod         , cldtop_cooling    , ent_eff           , &
              !tke budget arrays
              dqke1              , qwt1              , qshear1           , &
              qbuoy1             , qdiss1            ,                     &
@@ -524,6 +525,7 @@ CONTAINS
  real(kind_phys), intent(in)    :: ts,znt,hfx,qfx,uoce,voce
  real(kind_phys), intent(inout) :: pblh,excess_h,excess_q
  real(kind_phys), intent(inout) :: maxmf,maxwidth,ztop_plume
+ real(kind_phys), intent(inout) :: maxmf_dd,maxwidth_dd,maxtkeprod,cldtop_cooling,ent_eff
  integer,         intent(in)    :: i,j
  integer,         intent(inout) :: kpbl
 !local
@@ -1058,7 +1060,12 @@ CONTAINS
     !!  - Add TKE source driven by cloud top cooling and
     !!  calculate the buoyancy production of TKE from cloud-top cooling
     !!  for downdraft or analytic options. 
-    tkeprod_dn   = zero
+    tkeprod_dn     = zero
+    maxtkeprod     = zero
+    cldtop_cooling = zero
+    ent_eff        = zero
+    maxmf_dd       = zero
+    maxwidth_dd    = zero
     if (bl_mynn_edmf_dd > 0) then
        call ddmp_mf(kts,kte,delt,dx,zw1,dz1,pres1,    &
             &u1,v1,th1,thl1,thv1,tk1,                 &
@@ -1078,7 +1085,9 @@ CONTAINS
             &sd_awu1,sd_awv1,                         &
             &sd_awqke1,                               &
             &tkeprod_dn,el1,                          &
-            &rthraten1,psig_bl                        )
+            &rthraten1,psig_bl,                       &
+            &maxmf_dd,maxwidth_dd                     )
+       
        !make sure there is some tke production for shallow fog,
        !when the nonlocal (mf) approach is no longer appropriate.
        call topdown_cloudrad(kts,kte,                 &
@@ -1087,7 +1096,8 @@ CONTAINS
             &sqc1,sqi1,sqw1,thl1,th1,                 &
             &ex1,pres1,rho1,thv1,                     &
             &cldfra_bl1,qc_bl1,qi_bl1,rthraten1,      &
-            &tkeprod_dn,psig_bl                       )
+            &tkeprod_dn,psig_bl,                      &
+            maxtkeprod,cldtop_cooling,ent_eff         )
     endif
 
     !Capability to substep the eddy-diffusivity portion
@@ -3064,7 +3074,7 @@ CONTAINS
        if (tkeprod_dn(k)>1e-6) sm(k) = max(sm(k), 0.01_kind_phys)
        if (tkeprod_dn(k)>1e-6) sh(k) = max(sh(k), 0.01_kind_phys)
        ! impose minimum sm for tte configurations. this may overide Pr limitations above.
-       if (closure .eq. 2.7) then
+       if (closure .ge. 2.7 .and. closure .lt. 3.0) then
           sm(k) = max(sm(k),min(p2, max(zero,three*qpe(k))))
        endif
        !
@@ -7957,7 +7967,8 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
               &sd_awqnwfa,sd_awqnifa,                &
               &sd_awu,sd_awv,sd_awqke,               &
               &tkeprod_dn,el,                        &
-              &rthraten,psig                         )
+              &rthraten,psig,                        &
+              &maxmf_dd,maxwidth_dd                  )
 
         integer, intent(in) :: kts,kte,kpbl
         real(kind_phys), dimension(kts:kte), intent(in) ::            &
@@ -7968,34 +7979,38 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
         real(kind_phys), dimension(kts:kte+1), intent(in) :: zw
         real(kind_phys), intent(in)  :: flt,flq,fltv
         real(kind_phys), intent(in)  :: dt,dx,ust,pblh,psig
-  ! outputs - downdraft properties
+   !outputs - downdraft properties
         real(kind_phys), dimension(kts:kte), intent(inout) ::         &
         edmf_a_dd,   edmf_w_dd,   edmf_qt_dd,  edmf_thl_dd,           &
         edmf_ent_dd, edmf_qc_dd,  tkeprod_dn
-
-  ! outputs - variables needed for solver (sd_aw - sum ai*wi, sd_awphi - sum ai*wi*phii)
+   !outputs - variables needed for solver (sd_aw - sum ai*wi, sd_awphi - sum ai*wi*phii)
         real(kind_phys), dimension(kts:kte+1) ::                      &
             sd_aw, sd_awthl, sd_awu, sd_awv,                          &
             sd_awqt, sd_awqc, sd_awqv, sd_awqi, sd_awqnc, sd_awqni,   &
             sd_awqnwfa, sd_awqnifa, sd_awqke, sd_aw2
+   !outputs - diagnostics
+        real(kind_phys), intent(inout) :: maxmf_dd,maxwidth_dd
 
    !downdraft properties
-        integer, parameter::            &
-            & ndd        = 5,           &  !number of downdrafts
-            & kmin       = 3               !lowest k-level where downdrafts can start
-        real(kind_phys),parameter ::    &
-            & minddd     = 50.,         &  !min downdraft diameter (m)
-            & maxddd     = 500.,        &  !max downdraft diameter (m)
-            & zmin       = 50.,         &  !lowest height where downdrafts can start
-            & dz200      = 200.,        &  !depth over which other parameters are normalized to
-            & ct_cooling = -0.00011        !activation threshold of ~ -10 C cooling at cloud top per day
-        real(kind_phys)::               &
-            & maxdd2,                   &  !variable max downdraft diameter (m)
-            &    ddd,                   &  !downdraft diameter
-            &     dl,                   &  !diameter increment
-            &    add,                   &  !total area of downdrafts
-            & minexc,                   &  !minimum init downdraft temp pert
-            & maxexc                       !maximum init downdraft temp pert
+        integer, parameter::                &
+            & ndd            = 5,           &  !number of downdrafts
+            & kmin           = 3               !lowest k-level where downdrafts can start
+        real(kind_phys),parameter ::        &
+            & minddd         = 100.,        &  !min downdraft diameter (m)
+            & maxddd         = 500.,        &  !max downdraft diameter (m)
+            & zmin           = 50.,         &  !lowest height where downdrafts can start
+            & dz200          = 200.,        &  !depth over which other parameters are normalized to
+            & cooling_thresh = -0.00010        !activation threshold of downdrafts
+                              !-0.000116 is ~ -10 C cooling at cloud top per day
+                              !-0.000093 is ~  -8 C cooling at cloud top per day
+                              !-0.000069 is ~  -6 C cooling at cloud top per day
+        real(kind_phys)::                   &
+            & maxdd2,                       &  !variable max downdraft diameter (m)
+            &    ddd,                       &  !downdraft diameter
+            &     dl,                       &  !diameter increment
+            &    add,                       &  !total area of downdrafts
+            & minexc,                       &  !minimum init downdraft temp pert
+            & maxexc                           !maximum init downdraft temp pert
   ! k-index of downdraft starting height
         integer,         dimension(1:ndd) :: dd_initk
   ! downdraft column properties
@@ -8005,6 +8020,7 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
   ! entrainment variables
         real(kind_phys), dimension(kts:kte+1,1:ndd) :: ent
   ! internal variables
+        real(kind_phys), dimension(kts:kte):: massflux
         integer :: k,i,ki,qltop,qlbase
         real(kind_phys):: qstar,thstar,sigmaw,sigmaqt,                &
             sigmath,z0,pwmin,pwmax,wmin,wmax,went,mindownw
@@ -8014,13 +8030,14 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
         real(kind_phys):: jump_thv,jump_qt,jump_thetal,               &
             refthl,refthv,refthlv,refqt,refqc,refqi,refqnc,refqni,    &
             refqnwfa,refqnifa,refu,refv,refqke,refqt2,reftk,refp,     &
-            qx_k,qx_km1,refthvm1,cftop,crate,ac_wsp,wspd_pbl
+            qx_k,qx_km1,refthvm1,cftop,crate,ac_wsp,wspd_pbl,         &
+            maxcooling
 
   ! dd specific internal variables
         real(kind_phys):: radflux, f0, wstar_rad, dz_ent
         logical :: cloudflg
         logical :: singlelayer             !check for single or multi-layer clouds
-        real(kind_phys):: sigq,xl,rsl,cpm,a,diffqt,                   &
+        real(kind_phys):: sigq,xl,rsl,cpm,a,diffqt,dp,                &
             fng,qww,alpha,beta,bb,f,pt,t,q2p,b9,satvp,rhgrid,         &
             def_th,def_qt,frac_liq,frac_ice,qs1,qs2
 
@@ -8048,7 +8065,6 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
    downqnwfa  =zero
    downqnifa  =zero
    ent        =zero
-   tkeprod_dn =zero
    dd_initk   =0
 
    edmf_a_dd  =zero
@@ -8072,36 +8088,40 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
    sd_awv     =zero
    sd_awqke   =zero
 
-   ! first, check for stratocumulus-topped pbl with cooling at the cloud top.
+   ! first, check for cloud tops. if more than one, find the one with maximum cooling at the cloud top.
    cloudflg   =.false.
    singlelayer=.false.
    qltop      =1     !initialize
    qlbase     =1     !initialize
    crate      =zero
-   do k = max(kmin+1,kpbl-5),min(kpbl+20,kte-1)
-      !---------------------------------criteria for downdraft activation:
-      if ((cldfra_bl1(k-1).gt.0.5       ) .and. &   !1) stratocumulus exists
-          (rthraten(k-1)  .lt.ct_cooling)) then     !2) significant radiative cooling
+   do k = max(kmin,kpbl-5),min(kpbl+20,kte-1)
+      maxcooling = minval(rthraten(k-1:k+1))
+      !---------------------------------criteria for downdraft activa tion:
+      if ((cldfra_bl1(k).gt.p5 .and. cldfra_bl1(k+1).lt.p5) .and. &  !1) stratocu cloud top exists
+          (maxcooling  .lt. cooling_thresh)) then                    !2) significant radiative cooling
          ! found sc cloud with significant radiative cooling
          cloudflg =.true.
-         qltop    =k-1               ! index for sc cloud top
-         cftop    =cldfra_bl1(k-1)
-         crate    =min(crate, rthraten(k-1))  !maximum cooling rate at cloud top
-         if (cldfra_bl1(k-2).lt.0.1)singlelayer=.true.
+         if (maxcooling < crate) then
+            qltop    =k               !index for sc cloud top
+            cftop    =cldfra_bl1(k)
+            crate    =maxcooling      !maximum cooling rate at cloud top
+            if (cldfra_bl1(k-1).lt.p2)singlelayer=.true.
+         endif
       endif
    enddo
 
    ! determine maximum downdraft width and increments
-   maxdd2     =min(maxddd, 1.2*dx)                  !1) grid-scale dependence
-   maxdd2     =min(maxdd2, -1212121.*crate -30.)    !2) function of cloud top cooling rate
-   maxdd2     =min(maxdd2, p5*zw(qltop+1))          !3) limited for low cloud-top heights
-   dl         =max(maxdd2-minddd, zero)/real(ndd-1)
+   maxdd2  = min(maxddd, 1.2_kind_phys*dx)                                       !1) grid-scale dependence
+   maxdd2  = min(maxdd2, -100._kind_phys*crate*3600._kind_phys + 200._kind_phys) !2) function of cloud top cooling rate
+   maxdd2  = min(maxdd2, 80._kind_phys + p666*zw(qltop+1))                       !3) limited for low cloud-top heights
+   maxwidth_dd = maxdd2
+   dl      = max(maxdd2-minddd, zero)/real(ndd-1)
    
    !found sc cloud with conditions for downdrafts; compute downdrafts
    if (cloudflg .and. ( dl .gt. zero)) then
       do k = qltop, kts, -1
          qx_k =max(qt(k), qc_bl1(k) +qi_bl1(k))     !total cloud water and ice at k
-         if (qx_k .gt. 1e-6) then
+         if (qx_k .gt. 1e-6_kind_phys) then
             qlbase = k ! index for sc cloud base
          endif
       enddo
@@ -8113,9 +8133,10 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
 
       ! loop radflux
       f0 = zero
-      do k = kmin, qltop
-         radflux = rthraten(k) * exner(k) ! converts theta/s to temperature/s
-         radflux = radflux * cp / grav * ( p(k) - p(k+1) ) ! converts k/s to w/m^2
+      do k = max(kmin,qltop-2), qltop+1
+         radflux = rthraten(k) * exner(k)     ! converts theta/s to temperature/s
+         dp      = p5 * (( p(k) - p(k+1) ) + ( p(k-1) - p(k) ))
+         radflux = radflux * cp / grav * dp   ! converts k/s to w/m^2
          if ( radflux < zero ) f0 = abs(radflux) + f0
       enddo
       f0 = min(max(f0, one), 200._kind_phys)  !total radiative cooling (w/m2)
@@ -8125,11 +8146,11 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
       !for  50 w/m2, add = 0.10
       !for 100 w/m2, add = 0.20
       !for 150 w/m2, add = 0.30
-      add = min( f0*0.002, 0.3_kind_phys)
+      add      = min( f0*0.003, 0.3_kind_phys)
       !taper off area for high wind speeds
-      wspd_pbl=SQRT(MAX(u(kts)**2 + v(kts)**2, 0.01_kind_phys))
-      ac_wsp = one - min(max(zero, wspd_pbl - 10._kind_phys)/15._kind_phys, one)
-      add  = add * min(ac_wsp, psig)
+      wspd_pbl = sqrt(max(u(kts)**2 + v(kts)**2, 0.01_kind_phys))
+      ac_wsp   = one - min(max(zero, wspd_pbl - 10._kind_phys)/15._kind_phys, one)
+      add      = add * min(ac_wsp, psig)
 
       !find inversion strength across cloud top entrainment zone--normalized to 200 m vertical grid spacing
       dz_ent      = p5 * (dz(qltop+1) + dz(qltop))
@@ -8156,38 +8177,36 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
          refqke  = qke(ki)
          refp    = p(ki)
       else                  !initialize dd with avg of in-cloud properties (at & below) cloud top 
-         refthl  = (thl(ki-1)*dz(ki) + thl(ki)*dz(ki-1)) /(dz(ki)+dz(ki-1))
-         refthlv = refthl*(1.+p608*(qv(ki-1)*dz(ki) + qv(ki)*dz(ki-1)) /(dz(ki)+dz(ki-1)))
-         refthv  = (thv(ki-1)*dz(ki) + thv(ki)*dz(ki-1)) /(dz(ki)+dz(ki-1))
-         refthvm1= (thv(ki-2)*dz(ki-1) + thv(ki-1)*dz(ki-2)) /(dz(ki-1)+dz(ki-2)) 
-         reftk   = (tk(ki-1)*dz(ki)  + tk(ki)*dz(ki-1))  /(dz(ki)+dz(ki-1))
-         refqt   = (qt(ki-1)*dz(ki)  + qt(ki)*dz(ki-1))  /(dz(ki)+dz(ki-1))
-         refqc   = (qc(ki-1)*dz(ki)  + qc(ki)*dz(ki-1))  /(dz(ki)+dz(ki-1))
-         refqi   = (qi(ki-1)*dz(ki)  + qi(ki)*dz(ki-1))  /(dz(ki)+dz(ki-1))
-         refqnc  = (qnc(ki-1)*dz(ki) + qnc(ki)*dz(ki-1)) /(dz(ki)+dz(ki-1))
-         refqni  = (qni(ki-1)*dz(ki) + qni(ki)*dz(ki-1)) /(dz(ki)+dz(ki-1))
-         refqnwfa= (qnwfa(ki-1)*dz(ki) + qnwfa(ki)*dz(ki-1)) /(dz(ki)+dz(ki-1))
-         refqnifa= (qnifa(ki-1)*dz(ki) + qnifa(ki)*dz(ki-1)) /(dz(ki)+dz(ki-1))
-         refu    = (u(ki-1)*dz(ki)   + u(ki)*dz(ki-1))   /(dz(ki)+dz(ki-1))
-         refv    = (v(ki-1)*dz(ki)   + v(ki)*dz(ki-1))   /(dz(ki)+dz(ki-1))
-         refqke  = (qke(ki-1)*dz(ki) + qke(ki)*dz(ki-1)) /(dz(ki)+dz(ki-1))
-         refp    = (p(ki-1)*dz(ki)   + p(ki)*dz(ki-1))   /(dz(ki)+dz(ki-1))
+         refthl  = (thl(ki-1)*dz(ki)   + thl(ki)*dz(ki-1))  /(dz(ki)+dz(ki-1))
+         refthlv = refthl*(1.+p608*(qv(ki-1)*dz(ki) + qv(ki)*dz(ki-1))/(dz(ki)+dz(ki-1)))
+         refthv  = (thv(ki-1)*dz(ki)   + thv(ki)*dz(ki-1))  /(dz(ki)+dz(ki-1))
+         refthvm1= (thv(ki-2)*dz(ki-1) + thv(ki-1)*dz(ki-2))/(dz(ki-1)+dz(ki-2)) 
+         reftk   = (tk(ki-1)*dz(ki)    + tk(ki)*dz(ki-1))   /(dz(ki)+dz(ki-1))
+         refqt   = (qt(ki-1)*dz(ki)    + qt(ki)*dz(ki-1))   /(dz(ki)+dz(ki-1))
+         refqc   = (qc(ki-1)*dz(ki)    + qc(ki)*dz(ki-1))   /(dz(ki)+dz(ki-1))
+         refqi   = (qi(ki-1)*dz(ki)    + qi(ki)*dz(ki-1))   /(dz(ki)+dz(ki-1))
+         refqnc  = (qnc(ki-1)*dz(ki)   + qnc(ki)*dz(ki-1))  /(dz(ki)+dz(ki-1))
+         refqni  = (qni(ki-1)*dz(ki)   + qni(ki)*dz(ki-1))  /(dz(ki)+dz(ki-1))
+         refqnwfa= (qnwfa(ki-1)*dz(ki) + qnwfa(ki)*dz(ki-1))/(dz(ki)+dz(ki-1))
+         refqnifa= (qnifa(ki-1)*dz(ki) + qnifa(ki)*dz(ki-1))/(dz(ki)+dz(ki-1))
+         refu    = (u(ki-1)*dz(ki)     + u(ki)*dz(ki-1))    /(dz(ki)+dz(ki-1))
+         refv    = (v(ki-1)*dz(ki)     + v(ki)*dz(ki-1))    /(dz(ki)+dz(ki-1))
+         refqke  = (qke(ki-1)*dz(ki)   + qke(ki)*dz(ki-1))  /(dz(ki)+dz(ki-1))
+         refp    = (p(ki-1)*dz(ki)     + p(ki)*dz(ki-1))    /(dz(ki)+dz(ki-1))
       endif
 
       ! w* from radiative forcing (m/s)
       !wstar_rad =    ( grav * dz_ent * f0 / (refthl * rho(ki) * cp) ) **p333
-      wstar_rad = 1.25 * ( grav*dz200 * f0 / (refthl * rho(ki) * cp) ) **p333
-      wstar_rad = min(max(wstar_rad, p1), three)
-      ! note: since dz_ent cancels, went is not a function of dz_ent; (m/s)
+      wstar_rad = 1.25_kind_phys * ( grav*dz200 * f0 / (refthl * rho(ki) * cp) ) **p333
+      wstar_rad = min(max(wstar_rad, p1), 1.5_kind_phys)      ! note: since dz_ent cancels, went is not a function of dz_ent; (m/s)
       !went      = thv(1) / ( grav * jump_thv * dz_ent ) * &
-      went      = thv(1) / ( grav * jump_thv * dz200 ) * &
-                  (p5 * wstar_rad**3 )
-      qstar     = abs(went*jump_qt/wstar_rad)
-      thstar    = f0/rho(ki)/cp/wstar_rad - went*jump_thv/wstar_rad
+      went      = thv(1) / ( grav * jump_thv * dz200 ) * (p5 * wstar_rad**3 )
+      qstar     = went*jump_qt/wstar_rad
+      thstar    = -f0/rho(ki)/cp/wstar_rad - went*jump_thv/wstar_rad
 
-      sigmaw    = 0.2 * wstar_rad ! 0.8*wstar_rad ! tuning parameter ! 0.5 was good
-      sigmaqt   = 40. * qstar  ! 50 was good
-      sigmath   = 1.0 * thstar ! 0.5 was good
+      sigmaw    = 0.2 * wstar_rad   ! 0.8*wstar_rad ! tuning parameter ! 0.5 was good
+      sigmaqt   = 50. * abs(qstar)  ! 50 was good
+      sigmath   = 1.5 * abs(thstar) ! 0.5 was good
 
       pwmin     = -1. ! drawing from the negative tail -3sigma to -1sigma
       pwmax     = -3.
@@ -8195,9 +8214,9 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
       wmax      = max(min(sigmaw*pwmax, -0.2), -0.5)
 
       !initialize downdraft temperature deficit def_th
-      minexc = min(-0.05     , 0.5*(refthvm1 - refthv)) !increase prob to go down 1 level
-      maxexc = min(minexc-0.1, -0.5          )
-      maxexc = max(maxexc    , thv(1) - refthlv)  !init parcel temp >= thv_sfc
+      minexc = min(-0.06     , 0.5*(refthvm1 - refthv)) !increase prob to go down 1 level
+      maxexc = min(minexc-0.1, -0.6          )
+      maxexc = max(maxexc    , thv(1) - refthlv)        !init parcel temp >= thv_sfc
       def_th = max(min(0.05*(-0.3)*sigmath/sigmaw, minexc), maxexc)
 
       !initialize downdraft moisture deficit def_qt (consistent with def_th)
@@ -8217,9 +8236,10 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
       endif
 
       if (debug_dd .eq. 1) then
+         print*,"-------------------------------------"
          print*,"found conditions for downdraft mixing"
          print*,"qltop=",qltop," qlbase=",qlbase
-         print*,"qstar=",qstar," thstar=",thstar," went=",went
+         print*,"q*=",qstar," theta*=",thstar," went=",went
          print*,"f0=",f0," jump_thv=",jump_thv,"w*rad=",wstar_rad
          print*,"u*=",ust," jump_qt=",jump_qt," fltv=",fltv
          print*,"grav=",grav," pblh=",pblh," thv(1)=",thv(1)
@@ -8257,7 +8277,7 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
 !              &     downthv(ki,i),downqc(ki,i)    )
       enddo
 
-      if (debug_dd .eq.1) then
+      if (debug_dd .eq. 1) then
          print*,"=====initialized downdraft properties===="
          print*,"downw=",downw(ki,:)
          print*,"downa=",downa(ki,:)
@@ -8278,7 +8298,7 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
             !ent(k,i) = 0.33/(min(max(abs(downw(k+1,i)),wmin),0.9)*ddd)
             !ent(k,i) = 0.53/(min(max(abs(downw(k+1,i)),wmin),0.6)*ddd)
             !was       0.26  before reducing downdraft sizes
-            ent(k,i) = 0.17/(min(max(abs(downw(k+1,i)),wmin),0.6)*ddd)
+            ent(k,i) = 0.18/(min(max(abs(downw(k+1,i)),wmin),0.6)*ddd)
             
             !minimum background entrainment and 1/z enhancement near surface
             ent(k,i) = max(ent(k,i),0.0003)
@@ -8317,9 +8337,10 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
                bcoeff =  0.2  !0.15 = same as in updrafts
                ecoeff = -2.0
             else
-               bcoeff = 0.2*min(zw(k)/pblh, one)
-               ecoeff = -2.0 - max(p5*pblh-zw(k), zero)/(p5*pblh)
-               buoy   = buoy*min(zw(k)/pblh, one)
+               !for numerical stability reasons, apply brakes near the surface.
+               bcoeff = 0.2*(one - exp(-zw(k)/(0.15_kind_phys*pblh)))
+               ecoeff = -2.0_kind_phys - exp(-zw(k)/(0.15_kind_phys*pblh))
+               buoy   = buoy*(one - exp(-zw(k)/(0.15_kind_phys*pblh)))
             endif
             if (k==kts+2) buoy=max(buoy,0.01)
             if (k==kts+1) buoy=max(buoy,0.05)
@@ -8334,7 +8355,7 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
 !               wn2=downw(k+1,i)**2      - 2.*wa*buoy*dz(k)
 !            end if
 
-            mindownw = min(downw(k+1,i),-0.2)
+            mindownw = min(downw(k+1,i),-0.2_kind_phys)
             wn = downw(k+1,i) + (ecoeff*ent(k,i)*downw(k+1,i)        &
                               - bcoeff*buoy/mindownw)*min(dz(k), 250.)
 
@@ -8347,7 +8368,7 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
             if (wn > downw(k+1,i) + min(1.25*dz(k)/200., 2.0))then
                 wn = downw(k+1,i) + min(1.25*dz(k)/200., 2.0)
             endif
-            wn = max(min(wn,zero), -3.0)
+            wn = max(min(wn,zero), -2.0_kind_phys)
 
             if (debug_dd .eq.1) then
                print *, "downdraft #:", i," diameter:",ddd,"==========="
@@ -8361,7 +8382,7 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
             endif
 
             if (wn .lt. 0.) then !terminate when velocity is too small
-               downw(k,i)  = wn !-sqrt(wn2)
+               downw(k,i)     = wn !-sqrt(wn2)
                downthv(k,i)   = thvn
                downthl(k,i)   = thln
                downqt(k,i)    = qtn
@@ -8390,8 +8411,8 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
          enddo
       enddo
 
-      downw(1,:) = 0. !make sure downdrafts do not penetrate the surface
-      downa(1,:) = 0.
+      downw(1,:) = zero !make sure downdrafts do not penetrate the surface
+      downa(1,:) = zero
 
       !
       ! combine all downdrafts into one averaged downdraft
@@ -8415,10 +8436,13 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
          endif
          !instead of dTKE/dt = 1/2 w^3, multiply by 2 for QKE.
          tkeprod_dn(k)=(abs(edmf_w_dd(k))**3)*edmf_a_dd(k)/(b1*max(el(k),0.2))
+         tkeprod_dn(k)=min(0.0004_kind_phys, tkeprod_dn(k))
       enddo
       ! add tke source for entrainment at layer above cloud. use same area
       ! above cloud as used in the initialized downdraft area.
-      tkeprod_dn(qltop+1)=abs(went)**3*edmf_a_dd(qltop)/(b1*max(el(qltop+1),0.1))
+      tkeprod_dn(qltop+1)=abs(went)**3*edmf_a_dd(qltop)/(b1*max(el(qltop+1),0.2))
+      massflux = edmf_a_dd * edmf_w_dd
+      maxmf_dd = abs(minval(massflux))
       
       !
       ! compute variables needed for solver
@@ -8764,7 +8788,8 @@ end function phih
                &dz1,zw,fltv,u1,v1,xland,kpbl,pblh,            &
                &sqc,sqi,sqw,thl,th1,ex1,pres1,rho1,thv,       &
                &cldfra_bl1,qc_bl,qi_bl,rthraten,              &
-               &tkeprod_dn,psig                               )
+               &tkeprod_dn,psig,                              &
+               &maxtkeprod,cldtop_cooling,ent_eff)
 
     !input
     integer,         intent(in) :: kte,kts
@@ -8777,41 +8802,54 @@ end function phih
     integer        , intent(in) :: kpbl
     !output - production of tke from cloud-top radiative cooling
     real(kind_phys), dimension(kts:kte), intent(inout) :: tkeprod_dn
+    real(kind_phys), intent(inout) :: maxtkeprod
+    real(kind_phys), intent(inout) :: cldtop_cooling
+    real(kind_phys), intent(inout) :: ent_eff
     !local
-    real(kind_phys),parameter:: pblh500 = 500.  !scale height for pbl
+    real(kind_phys),parameter:: dz500   = 500.  !scale height for pbl
+    real(kind_phys),parameter:: dz200   = 200.  !scale height for entrainment layer
+    real(kind_phys),parameter:: cooling_thresh = -0.000069  !activation threshold of turbulence
+                                                !-0.000116 is ~ -10 C cooling at cloud top per day
+                                                !-0.000093 is ~  -8 C cooling at cloud top per day
+                                                !-0.000069 is ~  -6 C cooling at cloud top per day
     real(kind_phys), dimension(kts:kte) :: zfac,zfacent,tkeprodorig
-    real(kind_phys) :: bfx0,wm3,bfxpbl,dthvx,tmp1,zfacent_max,zagl
-    real(kind_phys) :: temps,templ,zl1,wstar3_2,dz_ent
-    real(kind_phys) :: ent_eff,radmax,radflux,we,rcldb,rvls,minrad,zminrad
+    real(kind_phys) :: bfx0,dthvx,tmp1,zfacent_max,zagl
+    real(kind_phys) :: temps,templ,zl1,zb1,dz_ent,wstar_rad,maxcooling
+    real(kind_phys) :: f0,radflux,went,rcldb,rvls,minrad,zminrad,dp
     real(kind_phys) :: wspd_pbl,ac_wsp
     real(kind_phys), parameter :: pfac =2.0, zfmin = 0.01, phifac=8.0
     integer :: k,kk,kminrad
     logical :: cloudflg
-    logical,parameter:: debug=.false. 
+    logical,parameter:: debug=.false.
 
-    cloudflg = .false.
-    minrad   = one
-    kminrad  = kpbl
-    zminrad  = PBLH
+    cloudflg       = .false.
+    minrad         = zero
+    kminrad        = kpbl
+    zminrad        = pblh
     !save the tke production from the downdraft scheme for comparison
     tkeprodorig(kts:kte)=tkeprod_dn(kts:kte)
     
-    !check for stratocumulus- or fog-tops
-    do k = 1,kpbl+10
-       if (cldfra_bl1(k)>0.5 .and. cldfra_bl1(k+1)<0.5 .and. rthraten(k)*3600. < -0.25) then
-          cloudflg = .true.
-          minrad   = rthraten(k)
-          kminrad  = k
-          zminrad  = zw(k) + p5*dz1(k) !Best estimate of height of TKE source (top of downdrafts)
+    !check for stratocumulus- or fog-tops with cooling at top
+    do k = 1,min(kpbl+10,kte-1)
+       maxcooling = minval(rthraten(max(kts,k-1):k+1))
+       !---------------------------------criteria for downdraft activa tion:
+       if ((cldfra_bl1(k).gt.p5 .and. cldfra_bl1(k+1).lt.p5) .and. &  !1) stratocu cloud top exists
+           (maxcooling  .lt. cooling_thresh)) then                    !2) significant radiative cooling
+          ! found sc cloud with significant radiative cooling
+          cloudflg =.true.
+          if (maxcooling < minrad) then
+             minrad    =maxcooling      !maximum cooling rate at cloud top
+             kminrad  = k
+             zminrad  = zw(k) + p5*dz1(k) !Best estimate of height of TKE source (top of downdrafts)
+          endif
        endif
-       if (cloudflg) exit
     enddo
 
     if (cloudflg) then
-       zl1 = p25*dz1(kts)
-       k   = kminrad
+       zl1     = p25*dz1(kts)
+       k       = kminrad
 
-       templ=thl(k)*ex1(k)
+       templ   = thl(k)*ex1(k)
        !rvls is ws at full level
        rvls    = 100.*6.112*EXP(17.67*(templ-273.16)/(templ-29.65))*(ep_2/pres1(k+1))
        temps   = templ + (sqw(k)-rvls)/(cp/xlv  +  ep_2*xlv*rvls/(r_d*templ**2))
@@ -8824,68 +8862,84 @@ end function phih
                  (thl(k)   + th1(k)  *p608*sqw(k))
        !reduce vertical resolution sensitivity; normalize to 200 m depth
        dz_ent  = (dz1(k  )*dz1(k+1)+dz1(k+1)*dz1(k  ))/(dz1(k+1)+dz1(k)) + &
-                   (dz1(k+1)*dz1(k+2)+dz1(k+2)*dz1(k+1))/(dz1(k+1)+dz1(k+2)) 
-       dthvx   = dthvx * 200._kind_phys/dz_ent  !normalized gradient
+                 (dz1(k+1)*dz1(k+2)+dz1(k+2)*dz1(k+1))/(dz1(k+1)+dz1(k+2)) 
+       dthvx   = dthvx * dz200/dz_ent  !normalized gradient
        dthvx   = max(dthvx, p1)
        tmp1    = xlvcp * rcldb/(ex1(k)*dthvx)
-       !Originally from Nichols and Turton (1986), where a2 = 60, but lowered
+       !entrainment efficiency: originally from Nichols and Turton (1986), where a2 = 60, but lowered
        !here to 8, as in Grenier and Bretherton (2001).
-       ent_eff = p2 + p2*eight*tmp1
+       ent_eff = min(two, p2 + p2*eight*tmp1)
 
-       radmax=zero
+       f0      = zero
        do kk = max(kts,kminrad-1),kminrad+1
-          radflux = rthraten(kk)*ex1(kk)                    !converts theta/s to temp/s
-          radflux = radflux*cp/grav*(pres1(kk)-pres1(kk+1)) !converts temp/s to w/m^2
-          if (radflux < zero ) radmax=max(abs(radflux),radmax) !max cooling
+          radflux = rthraten(kk)*ex1(kk)             !converts theta/s to temp/s
+          dp      = rho1(k)*grav*dz1(k)
+          radflux = radflux * cp / grav * dp         !converts temp/s to w/m^2 over layer
+          if (radflux < zero ) then
+             f0   = abs(radflux)+f0                  !sum of cooling (w/m^2) over relevant layers
+          endif
        enddo
 
        !more strict limits over land to reduce stable-layer mixouts
        if ((xland-1.5).ge.zero) then     ! water
-          radmax = min(radmax, 150.0_kind_phys)
-          bfx0   = max(radmax/rho1(k)/cp, zero)
+          f0     = min(f0, 150.0_kind_phys)
+          bfx0   = max(f0/rho1(k)/cp, zero)
        else                              ! land - limited considerably
-          radmax = min(p25*radmax,30._kind_phys)
-          bfx0   = max(radmax/rho1(k)/cp, zero)
+          f0     = min(p25*f0, 30._kind_phys)
+          bfx0   = max(f0/rho1(k)/cp, zero)
        endif
-
+       cldtop_cooling = abs(minrad) * 3600.   ! (K/hr) max cooling 
+       
        !entrainment from pbl top thermals
-       wm3    = grav/thv(k)*bfx0*pblh500 ! this is wstar3
-       bfxpbl = -ent_eff * bfx0
-       dthvx  = max(thv(k+1)-thv(k),p1)
-       we     = max(bfxpbl/dthvx,-sqrt(wm3**p666))
+       wstar_rad = 1.25_kind_phys * ( grav/thv(k) * dz200 * f0 / (rho1(k) * cp) ) **p333
+       wstar_rad = min(max(wstar_rad, p1), three)
+       dthvx     = max(thv(k+1)-thv(k), p1)
+       went      = max(ent_eff*bfx0/dthvx, p5*wstar_rad) !entrainment velocity (m/s)
 
+       !compute normalized analytical profiles (max=1). constrain the profile of tke production to not
+       !always go to the surface if forcing isnt strong enough, i.e., depth ~ wstar * Timescale of descent
+       zb1       = max(zl1, zminrad - wstar_rad*800._kind_phys)
        do k = kts,kminrad+3
           !for fog at k=1, make min height above ground (zagl) larger than first model deptk
-          zagl         = zw(k) + p5*dz1(k)
+          zagl       = zw(k) + p5*dz1(k)
           if (k==kts .and. kminrad==kts) zagl = 0.4_kind_phys * dz1(kts)
           !analytic vertical profile
-          zfac(k)      = min(max((one-(zagl-zl1)/(zminrad-zl1)), zfmin), one)
-          zfacent(k)   = max((zminrad-zagl)/zminrad, zero)*(one-zfac(k))**3
+          zfac(k)    = min(max((one - max(zero,zagl-zb1)/(zminrad-zl1)), zfmin), one)
+          zfacent(k) = max((zminrad-zagl)/zminrad, zero)*(one-zfac(k))**3
        enddo
        zfacent_max = maxval(zfacent(kts:kminrad+3))
        zfacent     = zfacent/max(zfacent_max, 1e-5_kind_phys)  !normalize zfacent
+
+       !calculate tke production
        do k = kts,kminrad+3
-          !calculate tke production = 2(g/th)(w'th'), where w'th' = a(th/g)wstar^3/pblh,
-          !a = ent_eff, and wstar is associated with the radiative cooling at top of pbl.
-          !an analytic profile controls the magnitude of this tke prod in the vertical.
-          tkeprod_dn(k) = max(tkeprod_dn(k), p2*ent_eff*wm3/pblh500*zfacent(k))
+          tkeprod_dn(k) = max(tkeprod_dn(k), p3*ent_eff*wstar_rad**3/dz500*zfacent(k))
           tkeprod_dn(k) = max(tkeprod_dn(k), zero)
+          tkeprod_dn(k) = min(0.0004_kind_phys, tkeprod_dn(k))
        enddo
        !make sure there is some TKE source at the max cooling level
-       tkeprod_dn(kminrad)=max(tkeprod_dn(kminrad),p333*tkeprod_dn(max(kts,kminrad-1)))
+       tkeprod_dn(kminrad)=max(tkeprod_dn(kminrad), p333*tkeprod_dn(max(kts,kminrad-1)))
        !make sure there is a small TKE source above the max cooling level
-       tkeprod_dn(kminrad+1)=max(tkeprod_dn(kminrad+1),p2*tkeprod_dn(max(kts,kminrad)))
+       tkeprod_dn(kminrad+1)=max(tkeprod_dn(kminrad+1), min(p5,ent_eff)*tkeprod_dn(max(kts,kminrad)))
+       
        !taper off tke production in high-wind conditions and at high resolutions
-       wspd_pbl  = SQRT(MAX(u1**2 + v1**2, 0.01_kind_phys))
-       ac_wsp    = one - min(max(zero, wspd_pbl - 10._kind_phys)/15._kind_phys, one)
+       wspd_pbl   = sqrt(max(u1**2 + v1**2, 0.01_kind_phys))
+       ac_wsp     = one - min(max(zero, wspd_pbl - 10._kind_phys)/15._kind_phys, one)
        tkeprod_dn = tkeprod_dn * min(ac_wsp, psig)
     endif !end cloud check
 
+    !calculate the maximum tke production in the profile and convert to an hourly rate.
+    maxtkeprod = maxval(tkeprod_dn)*3600.
+    
     if (cloudflg .and. debug) then
        !debug printouts
        print *, '-----------------------------------------------------------------'
-       print *, ' kminrad=',kminrad,' radmax(per hr)=',radmax
-       print *, ' ent_eff=',ent_eff,' w*=',wm3,' pblh=',pblh
+       if ((xland-1.5).ge.zero) then
+          print *, ' over water, kminrad=',kminrad
+       else
+          print *, ' over land, kminrad=',kminrad
+       endif
+       print *, ' ctop cooling (K/hr)=',minrad*3600.,' rad cooling (W/m^2)=',f0
+       print *, ' ent_eff=',ent_eff,' went=',went,' w*rad=',wstar_rad
        print *, '  k    cldfra   dT/dt(hr)  dTKE/dt_orig dTKE/dt(hr)  zfacent'
        print *, '-----------------------------------------------------------------'
        do k = kminrad+3,kts,-1

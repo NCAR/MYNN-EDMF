@@ -64,7 +64,7 @@
  real(kind_phys),parameter:: xlvcp  = xlv/cp
  real(kind_phys),parameter:: g_inv  = 1./grav
 !thresholds for aerosol mixing. Needed until the surface fluxes are updated.
- real(kind_phys), parameter :: wfa_max = 800e12  !kg-1
+ real(kind_phys), parameter :: wfa_max = 800e10  !kg-1
  real(kind_phys), parameter :: wfa_min = 1e6     !kg-1
  real(kind_phys), parameter :: ifa_max = 500e6   !kg-1
  real(kind_phys), parameter :: ifa_min = 0.0     !kg-1
