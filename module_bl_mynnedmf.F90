@@ -347,7 +347,9 @@ MODULE module_bl_mynnedmf
       &p7             =  0.7,	 &
       &p75            =  0.75,	 &
       &p8             =  0.8,    &
-      &p9             =  0.9
+      &p9             =  0.9,    &
+      &p95            =  0.95,   &
+      &p99            =  0.99
 
 ! Constants for min tke in elt integration (qmin), max z/L in els (zmax), 
 ! and factor for eddy viscosity for TKE (Kq = Sqfac*Km):
@@ -1684,8 +1686,8 @@ CONTAINS
        !--------------------------------
        !taper ess for hurricane conditions
        ugrid  = sqrt(u(kts)**2 + v(kts)**2)
-       uonset = twenty
-       taper  = one - p9*min(one, max(zero, ugrid - uonset)/thirty) !reduce to 0.1
+       uonset = 15._kind_phys
+       taper  = one - p95*min(one, max(zero, ugrid - uonset)/twenty) !reduce to 0.1
        if ((xland-1.5).GE.zero) then !water
           clam0 = 1.8_kind_phys * taper
        else                          !land
@@ -1736,10 +1738,9 @@ CONTAINS
           
           !control factor for cloudy grid cells and/or have nonzero mass flux
           cldfrai =  p5*(cldfra(k)+cldfra(k-1)) !avg cloud fraction at interface
-          !cldfrai = min(p1, cldfrai)*ten
-!test
-          !cfac    = one - min(1.99_kind_phys*max(zero, cldfrai - 0.4_kind_phys), 0.99_kind_phys)
+          !introduce factor for limit reduction of ess in fully resolved clouds where latent heating is explicit
           cfac    = max( 0.01_kind_phys, min(2.7_kind_phys * (cldfrai - one)**2, one))
+          !cfac    = max( 0.01_kind_phys, min(4.5_kind_phys * (min(0.85_kind_phys,cldfrai) - 0.85_kind_phys)**2, one))
           cldfrai = min(p1, cldfrai*cfac)*ten
           !cldfrai  = max(ncld, min(p1,mfi)) !TEST: always allow some destabilization in grid cells with plumes.
           
@@ -1974,9 +1975,9 @@ CONTAINS
 
         !wt_u* are for hurricane tuning, meant to reduce diffusion in hurricanes
         ugrid = sqrt(u1(kts)**2 + v1(kts)**2)
-        uonset= twenty
-        wt_u1 = one - p2*min(one, max(zero, ugrid - uonset)/fifty) !reduce to 0.8
-        wt_u2 = one - p5*min(one, max(zero, ugrid - uonset)/fifty) !reduce to 0.5
+        uonset= 15._kind_phys
+        wt_u1 = one - p2*min(one, max(zero, ugrid - uonset)/forty) !reduce to 0.8
+        wt_u2 = one - p5*min(one, max(zero, ugrid - uonset)/forty) !reduce to 0.5
         !scale-awareness for the mesoscale greyzone (4-16 km)
         wt_dx = one - min(one, (max(zero, dx-4000._kind_phys)/12000._kind_phys))
         
@@ -1985,7 +1986,7 @@ CONTAINS
         alp2  = p3*wt_dx             + (one-wt_dx)*0.40_kind_phys
         alp3  = five * wt_u2 !taper off bouyancy enhancement in shear-driven pbls
         if ((xland-1.5).GE.zero) then !hurricane tuning, over water only
-           alp4  = twenty ! * wt_u2
+           alp4  = twenty * wt_u2
         else
            alp4  = 15.0_kind_phys
         endif
@@ -2027,7 +2028,7 @@ CONTAINS
         END DO
 
         if ((xland-1.5).GE.zero) then !hurricane tuning, over water only
-           elt_max=350.+100.*min(one, max(zero, ugrid - fifty)/25.0)
+           elt_max=350.+100.*min(one, max(zero, ugrid - twenty)/thirty)
         else
            elt_max=400._kind_phys
         endif
@@ -8032,6 +8033,7 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
             refqnwfa,refqnifa,refu,refv,refqke,refqt2,reftk,refp,     &
             qx_k,qx_km1,refthvm1,cftop,crate,ac_wsp,wspd_pbl,         &
             maxcooling
+        real(kind_phys):: dthvx,tmp1,rcldb,ent_eff
 
   ! dd specific internal variables
         real(kind_phys):: radflux, f0, wstar_rad, dz_ent
@@ -8047,7 +8049,7 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
         real(kind_phys) :: buoy,bcoeff,ecoeff
 
   ! additional printouts for debugging
-        integer, parameter :: debug_dd=0
+        integer, parameter :: debug_dd=0   !0:no debugging, 1:detailed output, 2:output for strange values only
 
   ! =================================================================
   ! initialize downdraft properties
@@ -8096,7 +8098,7 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
    crate      =zero
    do k = max(kmin,kpbl-5),min(kpbl+20,kte-1)
       maxcooling = minval(rthraten(k-1:k+1))
-      !---------------------------------criteria for downdraft activa tion:
+      !---------------------------------criteria for downdraft activation:
       if ((cldfra_bl1(k).gt.p5 .and. cldfra_bl1(k+1).lt.p5) .and. &  !1) stratocu cloud top exists
           (maxcooling  .lt. cooling_thresh)) then                    !2) significant radiative cooling
          ! found sc cloud with significant radiative cooling
@@ -8198,10 +8200,21 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
       ! w* from radiative forcing (m/s)
       !wstar_rad =    ( grav * dz_ent * f0 / (refthl * rho(ki) * cp) ) **p333
       wstar_rad = 1.25_kind_phys * ( grav*dz200 * f0 / (refthl * rho(ki) * cp) ) **p333
-      wstar_rad = min(max(wstar_rad, p1), 1.5_kind_phys)      ! note: since dz_ent cancels, went is not a function of dz_ent; (m/s)
-      !went      = thv(1) / ( grav * jump_thv * dz_ent ) * &
-      went      = thv(1) / ( grav * jump_thv * dz200 ) * (p5 * wstar_rad**3 )
-      qstar     = went*jump_qt/wstar_rad
+      wstar_rad = min(max(wstar_rad, p1), 1.5_kind_phys)      ! (m/s)
+
+      !entrainment efficiency
+      dthvx     = (thl(ki+2) + th(ki+2)*p608*qt(ki+2)) - &
+                  (thl(ki)   + th(ki)  *p608*qt(ki))
+      dthvx     = dthvx * dz200/dz_ent  !normalized gradient
+      dthvx     = max(dthvx, p1)
+      rcldb     = max(refqc+refqi, qc_bl1(ki)+qi_bl1(ki))  !any type of cloud water (sgs or resolved) 
+      tmp1      = xlvcp * rcldb/(exner(ki)*dthvx)
+      !entrainment efficiency: originally from Nichols and Turton (1986), where a2 = 60, but lowered
+      !here to 8, as in Grenier and Bretherton (2001).
+      ent_eff   = max(zero, min(one, p2 + p2*eight*tmp1))
+
+      went      = p333 * ent_eff * wstar_rad
+      qstar     = went * jump_qt / wstar_rad
       thstar    = -f0/rho(ki)/cp/wstar_rad - went*jump_thv/wstar_rad
 
       sigmaw    = 0.2 * wstar_rad   ! 0.8*wstar_rad ! tuning parameter ! 0.5 was good
@@ -8434,17 +8447,32 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,            &
             edmf_ent_dd(k)=edmf_ent_dd(k)/edmf_a_dd(k)
             edmf_qc_dd(k) =edmf_qc_dd(k) /edmf_a_dd(k)
          endif
-         !instead of dTKE/dt = 1/2 w^3, multiply by 2 for QKE.
-         tkeprod_dn(k)=(abs(edmf_w_dd(k))**3)*edmf_a_dd(k)/(b1*max(el(k),0.2))
+         !instead of dTKE/dt = 1/2 w^3, multiply by 1 for QKE.
+         tkeprod_dn(k)=(abs(edmf_w_dd(k))**3)*edmf_a_dd(k)/(b1*max(el(k),p5))
          tkeprod_dn(k)=min(0.0004_kind_phys, tkeprod_dn(k))
       enddo
       ! add tke source for entrainment at layer above cloud. use same area
       ! above cloud as used in the initialized downdraft area.
-      tkeprod_dn(qltop+1)=abs(went)**3*edmf_a_dd(qltop)/(b1*max(el(qltop+1),0.2))
+      tkeprod_dn(qltop+1)=went**3*edmf_a_dd(qltop)/(b1*max(el(qltop+1),p5))
       massflux = edmf_a_dd * edmf_w_dd
       maxmf_dd = abs(minval(massflux))
-      
-      !
+
+      if (debug_dd .eq. 2) then
+         do k=kts,kte
+            if (tkeprod_dn(k) > 0.0004_kind_phys .or. edmf_w_dd(k) < -two) then
+               print*,"-------------------------------------"
+               print*,"found strange behavior in downdrafts at",k
+               print*,"qltop=",qltop," qlbase=",qlbase," a(top)=",edmf_a_dd(qltop)
+               print*,"q*=",qstar," theta*=",thstar," went=",went
+               print*,"f0=",f0," jump_thv=",jump_thv,"w*rad=",wstar_rad
+               print*,"u*=",ust," jump_qt=",jump_qt," fltv=",fltv
+               print*,"grav=",grav," pblh=",pblh," thv(1)=",thv(1)
+               print*,"p(1)=",p(1)," jump_thl=",jump_thetal," ent_eff=",ent_eff
+               print*,"sigmaw=",sigmaw," wmin=",wmin," wmax=",wmax
+               print*,"tke prod=",tkeprod_dn(k)," w=",edmf_w_dd(k)," a(k)=",edmf_a_dd(k)
+            endif
+         enddo
+      endif
       ! compute variables needed for solver
       !
       do k=kts,qltop
@@ -8813,7 +8841,7 @@ end function phih
                                                 !-0.000093 is ~  -8 C cooling at cloud top per day
                                                 !-0.000069 is ~  -6 C cooling at cloud top per day
     real(kind_phys), dimension(kts:kte) :: zfac,zfacent,tkeprodorig
-    real(kind_phys) :: bfx0,dthvx,tmp1,zfacent_max,zagl
+    real(kind_phys) :: dthvx,tmp1,zfacent_max,zagl
     real(kind_phys) :: temps,templ,zl1,zb1,dz_ent,wstar_rad,maxcooling
     real(kind_phys) :: f0,radflux,went,rcldb,rvls,minrad,zminrad,dp
     real(kind_phys) :: wspd_pbl,ac_wsp
@@ -8883,10 +8911,8 @@ end function phih
        !more strict limits over land to reduce stable-layer mixouts
        if ((xland-1.5).ge.zero) then     ! water
           f0     = min(f0, 150.0_kind_phys)
-          bfx0   = max(f0/rho1(k)/cp, zero)
        else                              ! land - limited considerably
           f0     = min(p25*f0, 30._kind_phys)
-          bfx0   = max(f0/rho1(k)/cp, zero)
        endif
        cldtop_cooling = abs(minrad) * 3600.   ! (K/hr) max cooling 
        
@@ -8894,7 +8920,7 @@ end function phih
        wstar_rad = 1.25_kind_phys * ( grav/thv(k) * dz200 * f0 / (rho1(k) * cp) ) **p333
        wstar_rad = min(max(wstar_rad, p1), three)
        dthvx     = max(thv(k+1)-thv(k), p1)
-       went      = max(ent_eff*bfx0/dthvx, p5*wstar_rad) !entrainment velocity (m/s)
+       went      = p333*ent_eff*wstar_rad     !entrainment velocity (m/s)
 
        !compute normalized analytical profiles (max=1). constrain the profile of tke production to not
        !always go to the surface if forcing isnt strong enough, i.e., depth ~ wstar * Timescale of descent
