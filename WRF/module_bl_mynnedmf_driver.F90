@@ -8,8 +8,6 @@
 !!    Nakanishi and Niino (2009) \cite NAKANISHI_2009
  module module_bl_mynnedmf_driver
 
- use module_bl_mynnedmf_common
-
  contains
 
 !> \section arg_table_mynnedmf_init Argument Table
@@ -24,6 +22,8 @@
    &  IMS,IME,JMS,JME,KMS,KME,                     &
    &  ITS,ITE,JTS,JTE,KTS,KTE                      )
 
+   use module_bl_mynnedmf_common, only: kind_phys,zero
+   
    implicit none
         
    LOGICAL,INTENT(IN) :: ALLOWED_TO_READ,RESTART
@@ -114,7 +114,7 @@
 #endif
                )
 
-
+ use module_bl_mynnedmf_common, only: kind_phys,zero,one
  use module_bl_mynnedmf, only: mynnedmf
 
 !------------------------------------------------------------------- 
@@ -281,70 +281,70 @@
  itf=MIN0(ITE,IDE-1)
 
  !For now, initialized bogus array
- ozone            =0.0_kind_phys
- rO3blten         =0.0_kind_phys
- kzero            =0.0_kind_phys
+ ozone            =zero
+ rO3blten         =zero
+ kzero            =zero
  !initialize subgrid clouds:
- qc_bl1           =0.0_kind_phys
- qi_bl1           =0.0_kind_phys
- cldfra_bl1       =0.0_kind_phys
+ qc_bl1           =zero
+ qi_bl1           =zero
+ cldfra_bl1       =zero
  !spp
- pattern_spp_pbl1 =0.0_kind_phys
+ pattern_spp_pbl1 =zero
  !turbulence properties
- qke1             =0.0_kind_phys
- qke_adv1         =0.0_kind_phys
- el1              =0.0_kind_phys
- sh1              =0.0_kind_phys
- sm1              =0.0_kind_phys
- kh1              =0.0_kind_phys
- km1              =0.0_kind_phys
- tsq1             =0.0_kind_phys
- qsq1             =0.0_kind_phys
- cov1             =0.0_kind_phys
+ qke1             =zero
+ qke_adv1         =zero
+ el1              =zero
+ sh1              =zero
+ sm1              =zero
+ kh1              =zero
+ km1              =zero
+ tsq1             =zero
+ qsq1             =zero
+ cov1             =zero
  !tke budget (optional arrays)
  if (tke_budget .eq. 1) then
-    allocate(dqke1(kts:kte),    source=0.0_kind_phys)
-    allocate(qwt1(kts:kte),     source=0.0_kind_phys)
-    allocate(qshear1(kts:kte),  source=0.0_kind_phys)
-    allocate(qbuoy1(kts:kte),   source=0.0_kind_phys)
-    allocate(qdiss1(kts:kte),   source=0.0_kind_phys)
+    allocate(dqke1(kts:kte),    source=zero)
+    allocate(qwt1(kts:kte),     source=zero)
+    allocate(qshear1(kts:kte),  source=zero)
+    allocate(qbuoy1(kts:kte),   source=zero)
+    allocate(qdiss1(kts:kte),   source=zero)
  endif
  !1d mass-flux arrays - most are used in the scheme, so no toptional
- edmf_a1          =0.0_kind_phys
- edmf_w1          =0.0_kind_phys
- edmf_qt1         =0.0_kind_phys
- edmf_thl1        =0.0_kind_phys
- edmf_ent1        =0.0_kind_phys
- edmf_qc1         =0.0_kind_phys
- sub_thl1         =0.0_kind_phys
- sub_sqv1         =0.0_kind_phys
- det_thl1         =0.0_kind_phys
- det_sqv1         =0.0_kind_phys
+ edmf_a1          =zero
+ edmf_w1          =zero
+ edmf_qt1         =zero
+ edmf_thl1        =zero
+ edmf_ent1        =zero
+ edmf_qc1         =zero
+ sub_thl1         =zero
+ sub_sqv1         =zero
+ det_thl1         =zero
+ det_sqv1         =zero
  !moist species
- qv1              =0.0_kind_phys
- qc1              =0.0_kind_phys
- qi1              =0.0_kind_phys
- qs1              =0.0_kind_phys
- qnc1             =0.0_kind_phys
- qni1             =0.0_kind_phys
- qnwfa1           =0.0_kind_phys
- qnifa1           =0.0_kind_phys
- qnbca1           =0.0_kind_phys
- ozone1           =0.0_kind_phys
+ qv1              =zero
+ qc1              =zero
+ qi1              =zero
+ qs1              =zero
+ qnc1             =zero
+ qni1             =zero
+ qnwfa1           =zero
+ qnifa1           =zero
+ qnbca1           =zero
+ ozone1           =zero
  !1d (non-optional) tendencies
- du1              =0.0_kind_phys
- dv1              =0.0_kind_phys
- dth1             =0.0_kind_phys
- dqv1             =0.0_kind_phys
- dqc1             =0.0_kind_phys
- dqi1             =0.0_kind_phys
- dqs1             =0.0_kind_phys
- dqni1            =0.0_kind_phys
- dqnc1            =0.0_kind_phys
- dqnwfa1          =0.0_kind_phys
- dqnifa1          =0.0_kind_phys
- dqnbca1          =0.0_kind_phys
- dozone1          =0.0_kind_phys
+ du1              =zero
+ dv1              =zero
+ dth1             =zero
+ dqv1             =zero
+ dqc1             =zero
+ dqi1             =zero
+ dqs1             =zero
+ dqni1            =zero
+ dqnc1            =zero
+ dqnwfa1          =zero
+ dqnifa1          =zero
+ dqnbca1          =zero
+ dozone1          =zero
 
  !---------------------------------------
  !Begin looping in the i- and j-direction
@@ -505,7 +505,7 @@
          do n=1,nchem
          do k=kts,kte
             chem(k,n)=chem3d(i,k,j,n)
-            settle1(k,n)=0.0
+            settle1(k,n)=zero
          enddo
          enddo
 
@@ -514,20 +514,20 @@
             vd(n) = vd3d(i,1,j,n)
          enddo
       endif
-      frp_mean    = 0.0
-      emis_ant_no = 0.0
+      frp_mean    = zero
+      emis_ant_no = zero
 #else
-      chem        = 0.0
-      settle1     = 0.0
-      vd          = 0.0
-      frp_mean    = 0.0
-      emis_ant_no = 0.0
+      chem        = zero
+      settle1     = zero
+      vd          = zero
+      frp_mean    = zero
+      emis_ant_no = zero
 #endif
       frp1        = frp_mean(i,j)
       emis1       = emis_ant_no(i,j)
 
       !generic scalar array support
-      scalars     = 0.0
+      scalars     = zero
       
       !find/fix negative mixing ratios
 !      call moisture_check2(kte, delt,                 &
@@ -700,8 +700,8 @@
      !- Collect 3D ouput:
       if (icloud_bl > 0) then
          do k=kts,kte
-            qc_bl(i,k,j)     = qc_bl1(k)/(1.0 - sqv1(k))
-            qi_bl(i,k,j)     = qi_bl1(k)/(1.0 - sqv1(k))
+            qc_bl(i,k,j)     = qc_bl1(k)/(one - sqv1(k))
+            qi_bl(i,k,j)     = qi_bl1(k)/(one - sqv1(k))
             cldfra_bl(i,k,j) = cldfra_bl1(k)
          enddo
       endif
@@ -772,22 +772,24 @@
   ! Note that (qv,qc,qi,th) are the final state variables after
   ! applying corresponding input tendencies and corrective tendencies.
 
+    use module_bl_mynnedmf_common, only: kind_phys,xlvcp,xlscp,zero,two,p5
+
     implicit none
-    integer,  intent(in)     :: kte
-    real, intent(in)     :: delt
-    real, dimension(kte), intent(in)     :: dp
-    real, dimension(kte), intent(in)     :: exner
-    real, dimension(kte), intent(inout)  :: qv, qc, qi, th
+    integer,         intent(in)     :: kte
+    real(kind_phys), intent(in)     :: delt
+    real(kind_phys), dimension(kte), intent(in)     :: dp
+    real(kind_phys), dimension(kte), intent(in)     :: exner
+    real(kind_phys), dimension(kte), intent(inout)  :: qv, qc, qi, th
     integer   k
-    real ::  dqc2, dqi2, dqv2, sum, aa, dum
-    real, parameter :: qvmin1= 1e-8,    & !min at k=1
-                       qvmin = 1e-20,   & !min above k=1
-                       qcmin = 0.0,     &
-                       qimin = 0.0
+    real(kind_phys) ::  dqc2, dqi2, dqv2, sum, aa, dum
+    real(kind_phys), parameter :: qvmin1= 1e-8,    & !min at k=1
+                                  qvmin = 1e-20,   & !min above k=1
+                                  qcmin = 0.0,     &
+                                  qimin = 0.0
 
     do k = kte, 1, -1  ! From the top to the surface
-       dqc2 = max(0.0, qcmin-qc(k)) !qc deficit (>=0)
-       dqi2 = max(0.0, qimin-qi(k)) !qi deficit (>=0)
+       dqc2 = max(zero, qcmin-qc(k)) !qc deficit (>=0)
+       dqi2 = max(zero, qimin-qi(k)) !qi deficit (>=0)
 
        !update species
        qc(k)  = qc(k)  +  dqc2
@@ -802,12 +804,12 @@
 
        !then fix qv if lending qv made it negative
        if (k .eq. 1) then
-          dqv2   = max(0.0, qvmin1-qv(k)) !qv deficit (>=0)
+          dqv2   = max(zero, qvmin1-qv(k)) !qv deficit (>=0)
           qv(k)  = qv(k)  + dqv2
           qv(k)  = max(qv(k),qvmin1)
-          dqv2   = 0.0
+          dqv2   = zero
        else
-          dqv2   = max(0.0, qvmin-qv(k)) !qv deficit (>=0)
+          dqv2   = max(zero, qvmin-qv(k))  !qv deficit (>=0)
           qv(k)  = qv(k)  + dqv2
           qv(k-1)= qv(k-1)  - dqv2*dp(k)/dp(k-1)
           qv(k)  = max(qv(k),qvmin)
@@ -820,14 +822,14 @@
     ! extracted from all the layers that has 'qv > 2*qvmin'. This fully
     ! preserves column moisture.
     if( dqv2 .gt. 1.e-20 ) then
-        sum = 0.0
+        sum = zero
         do k = 1, kte
-           if( qv(k) .gt. 2.0*qvmin ) sum = sum + qv(k)*dp(k)
+           if( qv(k) .gt. two*qvmin ) sum = sum + qv(k)*dp(k)
         enddo
-        aa = dqv2*dp(1)/max(1.e-20,sum)
-        if( aa .lt. 0.5 ) then
+        aa = dqv2*dp(1)/max(1.e-20_kind_phys,sum)
+        if( aa .lt. p5 ) then
             do k = 1, kte
-               if( qv(k) .gt. 2.0*qvmin ) then
+               if( qv(k) .gt. two*qvmin ) then
                    dum    = aa*qv(k)
                    qv(k)  = qv(k) - dum
                endif
@@ -848,7 +850,8 @@ END SUBROUTINE moisture_check2
 !!
  subroutine mynnedmf_pre_run(kte,f_qc,f_qi,f_qs,qv,qc,qi,qs,sqv,sqc,sqi,sqs,errmsg,errflg)
 !=================================================================================================================
-
+   use module_bl_mynnedmf_common, only: kind_phys,zero,one
+   
 !---  input arguments:
  logical,intent(in):: &
     f_qc,      &              ! if true,the physics package includes the cloud liquid water mixing ratio.
@@ -857,7 +860,7 @@ END SUBROUTINE moisture_check2
 
  integer,intent(in):: kte
 
- real(kind=kind_phys),intent(in),dimension(1:kte):: &
+ real(kind_phys),intent(in),dimension(1:kte):: &
     qv,        &              !
     qc,        &              !
     qi,        &              !
@@ -870,7 +873,7 @@ END SUBROUTINE moisture_check2
  integer,intent(out):: &
     errflg                    ! output error flag (-).
 
- real(kind=kind_phys),intent(out),dimension(1:kte):: &
+ real(kind_phys),intent(out),dimension(1:kte):: &
     sqv,       &              !
     sqc,       &              !
     sqi,       &              !
@@ -883,29 +886,29 @@ END SUBROUTINE moisture_check2
 
 !---  initialization:
  do k = kts,kte
-    sqc(k) = 0._kind_phys
-    sqi(k) = 0._kind_phys
+    sqc(k) = zero
+    sqi(k) = zero
  enddo
 
 !---  conversion from water vapor mixing ratio to specific humidity:
  do k = kts,kte
-    sqv(k) = qv(k)/(1.+qv(k))
+    sqv(k) = qv(k)/(one+qv(k))
  enddo
 
 !---  conversion from cloud liquid water,cloud ice,and snow mixing ratios to specific contents:
  if(f_qc) then
     do k = kts,kte
-       sqc(k) = qc(k)/(1.+qv(k))
+       sqc(k) = qc(k)/(one+qv(k))
     enddo
  endif
  if(f_qi) then
     do k = kts,kte
-       sqi(k) = qi(k)/(1.+qv(k))
+       sqi(k) = qi(k)/(one+qv(k))
     enddo
  endif
  if(f_qs) then
     do k = kts,kte
-       sqs(k) = qs(k)/(1.+qv(k))
+       sqs(k) = qs(k)/(one+qv(k))
     enddo
  endif
 
@@ -920,7 +923,8 @@ END SUBROUTINE moisture_check2
 !!
  subroutine mynnedmf_post_run(kte,f_qc,f_qi,f_qs,delt,qv,qc,qi,qs,dqv,dqc,dqi,dqs,errmsg,errflg)
 !=================================================================================================================
-
+   use module_bl_mynnedmf_common, only: kind_phys,zero,one
+   
 !---  input arguments:
  logical,intent(in):: &
     f_qc, &                   ! if true,the physics package includes the cloud liquid water mixing ratio.
@@ -958,35 +962,35 @@ END SUBROUTINE moisture_check2
 !-----------------------------------------------------------------------------------------------------------------
 !---  initialization:
  do k = kts,kte
-    sq = qv(k)/(1.+qv(k))      !conversion of qv at time-step n from mixing ratio to specific humidity.
+    sq = qv(k)/(one+qv(k))     !conversion of qv at time-step n from mixing ratio to specific humidity.
     sqv(k) = sq + dqv(k)*delt  !calculation of specific humidity at time-step n+1.
-    rq = sqv(k)/(1.-sqv(k))    !conversion of qv at time-step n+1 from specific humidity to mixing ratio.
+    rq = sqv(k)/(one-sqv(k))   !conversion of qv at time-step n+1 from specific humidity to mixing ratio.
     dqv(k) = (rq - qv(k))/delt !calculation of the tendency.
  enddo
 
  if (f_qc) then
     do k = kts,kte
-       sq = qc(k)/(1.+qv(k))
+       sq = qc(k)/(one+qv(k))
        sqc(k) = sq + dqc(k)*delt
-       rq  = sqc(k)*(1.+sqv(k))
+       rq  = sqc(k)*(one+sqv(k))
        dqc(k) = (rq - qc(k))/delt
     enddo
  endif
 
  if (f_qi) then
     do k = kts,kte
-       sq = qi(k)/(1.+qv(k))
+       sq = qi(k)/(one+qv(k))
        sqi(k) = sq + dqi(k)*delt
-       rq = sqi(k)*(1.+sqv(k))
+       rq = sqi(k)*(one+sqv(k))
        dqi(k) = (rq - qi(k))/delt
     enddo
  endif
 
  if (f_qs) then
     do k = kts,kte
-       sq = qs(k)/(1.+qv(k))
+       sq = qs(k)/(one+qv(k))
        sqs(k) = sq + dqs(k)*delt
-       rq = sqs(k)*(1.+sqv(k))
+       rq = sqs(k)*(one+sqv(k))
        dqs(k) = (rq - qs(k))/delt
     enddo
  endif
