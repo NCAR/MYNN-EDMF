@@ -49,7 +49,7 @@ module module_bl_mynnedmf_wrf_tests
     end subroutine init_mynn_edmf_flags
 
     !=================================================================================================================    
-    subroutine wrf_test(case,bl_mynn_closure,bl_mynn_cloudpdf,bl_mynn_mixlength,icloud_bl, &
+    subroutine wrf_test(case,bl_mynn_closure,bl_mynn_cloudpdf,bl_mynn_mixlength,           &
         bl_mynn_edmf,bl_mynn_edmf_dd,bl_mynn_edmf_mom,bl_mynn_edmf_tke,bl_mynn_cloudmix,   &
         bl_mynn_mixqt, bl_mynn_mixscalars, bl_mynn_mixaerosols,bl_mynn_mixnumcon,          &
         bl_mynn_ess,tke_budget)
@@ -70,7 +70,6 @@ module module_bl_mynnedmf_wrf_tests
         logical :: bl_mynn_tkeadvect, cycling
         integer :: bl_mynn_cloudpdf,                            &
                  bl_mynn_mixlength,                             &
-                 icloud_bl,                                     &
                  bl_mynn_edmf,                                  &
                  bl_mynn_edmf_dd,                               &
                  bl_mynn_edmf_mom,                              &
@@ -433,7 +432,7 @@ module module_bl_mynnedmf_wrf_tests
                   sub_thl3d         , sub_sqv3d         , det_thl3d          , det_sqv3d          , &
                   exch_h            , exch_m            , dqke               , qwt                , &
                   qshear            , qbuoy             , qdiss              , sh3d               , &
-                  sm3d              , spp_pbl           , pattern_spp_pbl    , icloud_bl          , &
+                  sm3d              , spp_pbl           , pattern_spp_pbl    ,                      &
                   bl_mynn_tkeadvect , tke_budget        , bl_mynn_cloudpdf   , bl_mynn_mixlength  , &
                   bl_mynn_closure   , bl_mynn_edmf      , bl_mynn_edmf_mom   , bl_mynn_edmf_tke   , &
                   bl_mynn_output    , bl_mynn_mixscalars, bl_mynn_mixaerosols, bl_mynn_mixnumcon  , &
