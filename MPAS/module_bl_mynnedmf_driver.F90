@@ -22,7 +22,7 @@
                   kts               , kte               , f_qc               , f_qi               , &
                   f_qs              , f_qoz             , f_nc               , f_ni               , &
                   f_nifa            , f_nwfa            , f_nbca             , initflag           , &
-                  do_restart        , do_DAcycling      , icloud_bl          , delt               , &
+                  do_restart        , do_DAcycling      , delt               ,                      &
                   dx                , xland             , ps                 , ts                 , &
                   qsfc              , ust               , ch                 , hfx                , &
                   qfx               , wspd              , znt                ,                      &
@@ -100,7 +100,6 @@
  
  integer,intent(in):: &
     initflag,           &!
-    icloud_bl,          &!
     spp_pbl              !
 
  real(kind=kind_phys),intent(in):: &
@@ -543,7 +542,6 @@
             bl_mynn_cloudmix   = bl_mynn_cloudmix     , &
             bl_mynn_mixqt      = bl_mynn_mixqt        , &
             bl_mynn_ess        = bl_mynn_ess          , &
-            icloud_bl          = icloud_bl            , &
             spp_pbl            = spp_pbl              , &
             kts = kts , kte = kte , errmsg = errmsg , errflg = errflg )
 

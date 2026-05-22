@@ -102,7 +102,7 @@
                   sub_thl3d         , sub_sqv3d         , det_thl3d          , det_sqv3d          , &
                   exch_h            , exch_m            , dqke               , qwt                , &
                   qshear            , qbuoy             , qdiss              , sh3d               , &
-                  sm3d              , spp_pbl           , pattern_spp_pbl    , icloud_bl          , &
+                  sm3d              , spp_pbl           , pattern_spp_pbl    ,                      &
                   bl_mynn_tkeadvect , tke_budget        , bl_mynn_cloudpdf   , bl_mynn_mixlength  , &
                   bl_mynn_closure   , bl_mynn_edmf      , bl_mynn_edmf_mom   , bl_mynn_edmf_tke   , &
                   bl_mynn_output    , bl_mynn_mixscalars, bl_mynn_mixaerosols, bl_mynn_mixnumcon  , &
@@ -128,7 +128,6 @@
  integer, intent(in) ::                                 &
          bl_mynn_cloudpdf,                              &
          bl_mynn_mixlength,                             &
-         icloud_bl,                                     &
          bl_mynn_edmf,                                  &
          bl_mynn_edmf_dd,                               &
          bl_mynn_edmf_mom,                              &
@@ -425,13 +424,11 @@
       !when NOT cold-starting on the first time step, update input
       if (initflag .eq. 0 .or. restart) THEN
          !update sgs cloud info.
-         if (icloud_bl > 0) then
-            do k=kts,kte
-               qc_bl1(k)     = qc_bl(i,k,j)
-               qi_bl1(k)     = qi_bl(i,k,j)
-               cldfra_bl1(k) = cldfra_bl(i,k,j)
-            enddo
-         endif
+         do k=kts,kte
+            qc_bl1(k)     = qc_bl(i,k,j)
+            qi_bl1(k)     = qi_bl(i,k,j)
+            cldfra_bl1(k) = cldfra_bl(i,k,j)
+         enddo
 
          !turbulennce variables
          do k=kts,kte
@@ -602,7 +599,6 @@
             bl_mynn_cloudmix   = bl_mynn_cloudmix     , &
             bl_mynn_mixqt      = bl_mynn_mixqt        , &
             bl_mynn_ess        = bl_mynn_ess          , &
-            icloud_bl          = icloud_bl            , &
             spp_pbl            = spp_pbl              , &
             kts = kts , kte = kte , errmsg = errmsg , errflg = errflg )
 
@@ -699,13 +695,11 @@
       endif
 
      !- Collect 3D ouput:
-      if (icloud_bl > 0) then
-         do k=kts,kte
-            qc_bl(i,k,j)     = qc_bl1(k)/(one - sqv1(k))
-            qi_bl(i,k,j)     = qi_bl1(k)/(one - sqv1(k))
-            cldfra_bl(i,k,j) = cldfra_bl1(k)
-         enddo
-      endif
+      do k=kts,kte
+         qc_bl(i,k,j)     = qc_bl1(k)/(one - sqv1(k))
+         qi_bl(i,k,j)     = qi_bl1(k)/(one - sqv1(k))
+         cldfra_bl(i,k,j) = cldfra_bl1(k)
+      enddo
 
       if (tke_budget .eq. 1) then
          do k=kts,kte

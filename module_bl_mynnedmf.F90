@@ -199,11 +199,11 @@ contains
              qc_bl1             , qi_bl1            , cldfra_bl1        , &
              !namelist configurations option
              bl_mynn_tkeadvect  , tke_budget        , bl_mynn_cloudpdf  , &
-             bl_mynn_mixlength  , icloud_bl         , bl_mynn_closure   , &
+             bl_mynn_mixlength  , bl_mynn_closure   , bl_mynn_ess       , &
              bl_mynn_edmf       , bl_mynn_edmf_mom  , bl_mynn_edmf_tke  , &
              bl_mynn_mixscalars , bl_mynn_mixaerosols,bl_mynn_mixnumcon , &
              bl_mynn_output     , bl_mynn_cloudmix  , bl_mynn_mixqt     , &
-             bl_mynn_edmf_dd    , bl_mynn_ess       ,                     &
+             bl_mynn_edmf_dd    ,                                         &
              !3d emdf output
              edmf_a1            , edmf_w1           , edmf_qt1          , &
              edmf_thl1          , edmf_ent1         , edmf_qc1          , &
@@ -239,7 +239,6 @@ contains
  integer, intent(in) :: bl_mynn_cloudmix
  integer, intent(in) :: bl_mynn_mixqt
  integer, intent(in) :: bl_mynn_ess
- integer, intent(in) :: icloud_bl
  real(kind_phys), intent(in) :: bl_mynn_closure
 
  logical, intent(in) :: FLAG_QI,FLAG_QNI,FLAG_QC,FLAG_QNC,&
@@ -594,18 +593,12 @@ contains
     if (tke_budget .eq. 1) then
        dqke1(kts:kte)=qke1(kts:kte)
     endif
-    if (icloud_bl > 0) then
-       cldfra_bl1_old(kts:kte)=cldfra_bl1(kts:kte)
-       qc_bl1_old(kts:kte)    =qc_bl1(kts:kte)
-       qi_bl1_old(kts:kte)    =qi_bl1(kts:kte)
-    else
-       cldfra_bl1    =zero
-       qc_bl1        =zero
-       qi_bl1        =zero
-       cldfra_bl1_old=zero
-       qc_bl1_old    =zero
-       qi_bl1_old    =zero
-    endif
+    cldfra_bl1_old(kts:kte)=cldfra_bl1(kts:kte)
+    qc_bl1_old(kts:kte)=qc_bl1(kts:kte)
+    qi_bl1_old(kts:kte)=qi_bl1(kts:kte)
+    cldfra_bl1 =zero
+    qc_bl1     =zero
+    qi_bl1     =zero
     dqc1       =zero
     dqi1       =zero
     dqs1       =zero
@@ -1060,11 +1053,9 @@ contains
              "SUSPICIOUS VALUES AT: i,k=",i,k," el1=",el1(k)
           IF ( km1(k) < 0. .OR. km1(k)> 2000.)print*,&
              "SUSPICIOUS VALUES AT: i,k=",i,k," km=",km1(k)
-          IF (icloud_bl > 0) then
-             IF (cldfra_bl1(k) < zero .OR. cldfra_bl1(k)> one)THEN
-                PRINT*,"SUSPICIOUS VALUES: CLDFRA_BL=",cldfra_bl1(k),&
-                                             " qc_bl=",qc_bl1(k)
-             endif
+          IF (cldfra_bl1(k) < zero .OR. cldfra_bl1(k)> one)THEN
+             PRINT*,"SUSPICIOUS VALUES: CLDFRA_BL=",cldfra_bl1(k),&
+                                          " qc_bl=",qc_bl1(k)
           endif
        enddo !end-k
     endif
@@ -6198,7 +6189,7 @@ END SUBROUTINE GET_PBLH
 !! original form. Some additions include:
 !!  -# scale-aware tapering as dx -> 0
 !!  -# transport of TKE (extra namelist option)
-!!  -# Chaboureau-Bechtold cloud fraction & coupling to radiation (when icloud_bl > 0)
+!!  -# Chaboureau-Bechtold cloud fraction & coupling to radiation
 !!  -# some extra limits for numerical stability
 !!
 !! This scheme remains under development, so consider it experimental code. 
@@ -6342,18 +6333,18 @@ END SUBROUTINE GET_PBLH
 
  ! chem/smoke
  integer, intent(in) :: nchem
- real(kind_phys),dimension(kts:kte,   nchem) :: chem1
- real(kind_phys),dimension(kts:kte+1, nchem) :: s_awchem1
- real(kind_phys),dimension(nchem)            :: chemn
+ real(kind_phys),dimension(kts:kte,   nchem)       :: chem1
+ real(kind_phys),dimension(kts:kte+1, nchem)       :: s_awchem1
+ real(kind_phys),dimension(nchem)                  :: chemn
  real(kind_phys),dimension(kts:kte+1,1:NUP, nchem) :: UPCHEM
  integer :: ic,cb_check
- real(kind_phys),dimension(kts:kte,   nchem) :: edmf_chem
+ real(kind_phys),dimension(kts:kte,   nchem)       :: edmf_chem
  logical, intent(in) :: mix_chem
  !generic scalars
  integer, intent(in) :: nscalars
- real(kind_phys),dimension(kts:kte,   nscalars) :: scalars
- real(kind_phys),dimension(kts:kte+1, nscalars) :: s_awscalars1
- real(kind_phys),dimension(nscalars)            :: scalarsn
+ real(kind_phys),dimension(kts:kte,   nscalars)    :: scalars
+ real(kind_phys),dimension(kts:kte+1, nscalars)    :: s_awscalars1
+ real(kind_phys),dimension(nscalars)               :: scalarsn
  real(kind_phys),dimension(kts:kte+1,1:NUP,nscalars) :: upscalars
  !local ktop for each plume
  integer,dimension(1:NUP) :: ktop_plume
