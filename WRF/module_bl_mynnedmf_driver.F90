@@ -727,7 +727,7 @@
       endif
 
 #if (WRF_CHEM == 1)
-      if (mix_chem .and. present(chem3d)) then
+      if (mix_chem) then
          do n = 1,nchem
             do k = kts,kte
                chem3d(i,k,j,n) = max(1.e-12, chem(k,n))
