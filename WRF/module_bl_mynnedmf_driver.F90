@@ -31,10 +31,12 @@
    &  rublten,rvblten,rthblten,rqvblten,rqcblten,  &
    &  rqiblten,qke,                                &
    &  restart,allowed_to_read,                     &
-   &  p_qc,p_qi,param_first_scalar,                &
-   &  ids,ide,jds,jde,kds,kde,                     &
-   &  ims,ime,jms,jme,kms,kme,                     &
-   &  its,ite,jts,jte,kts,kte                      )
+   &  P_QC,P_QI,PARAM_FIRST_SCALAR,                &
+   &  IDS,IDE,JDS,JDE,KDS,KDE,                     &
+   &  IMS,IME,JMS,JME,KMS,KME,                     &
+   &  ITS,ITE,JTS,JTE,KTS,KTE                      )
+
+   use module_bl_mynnedmf_common, only: kind_phys,zero
 
    implicit none
 
@@ -112,14 +114,16 @@
                   !2d output
                   pblh              , kpbl              , maxwidth           ,                      &
                   maxmf             , ztop_plume        , excess_h           , excess_q           , &
+                  maxwidth_dd       , maxmf_dd          , maxtkeprod         , cldtop_cooling     , &
+                  ent_eff           ,                                                               &
                   !optional 3d output
                   edmf_a            , edmf_w            ,                                           &
                   edmf_qt           , edmf_thl          , edmf_ent           , edmf_qc            , &
                   sub_thl           , sub_sqv           , det_thl            , det_sqv            , &
                   exch_h            , exch_m            , dqke               , qwt                , &
-                  qshear            , qbuoy             , qdiss              ,                      &
+                  qshear            , qbuoy             , qdiss              , sh3d               , &
                   !configuration options (+spp array)
-                  spp_pbl           , pattern_spp       , icloud_bl          ,                      &
+                  spp_pbl           , pattern_spp       ,                                           &
                   bl_mynn_tkeadvect , tke_budget        , bl_mynn_cloudpdf   , bl_mynn_mixlength  , &
                   bl_mynn_closure   , bl_mynn_edmf      , bl_mynn_edmf_mom   , bl_mynn_edmf_tke   , &
                   bl_mynn_output    , bl_mynn_mixscalars, bl_mynn_mixaerosols, bl_mynn_mixnumcon  , &
@@ -169,12 +173,11 @@
     bl_mynn_mixaerosols,   &
     bl_mynn_mixnumcon,     &
     bl_mynn_ess,           &
+    spp_pbl,               &
     tke_budget
 
  integer,intent(in):: &
     initflag,              &!
-    icloud_bl,             &!
-    spp_pbl
  
  real(kind_phys),intent(in):: &
     bl_mynn_closure
@@ -278,7 +281,11 @@
     maxmf,       &!
     ztop_plume,  &!
     excess_h,    &!
-    excess_q
+    excess_q,    &
+    maxwidth_dd, &
+    maxtkeprod,  &
+    cldtop_cooling, &
+    ent_eff
 
  real(kind_phys),intent(out),dimension(ims:ime,kms:kme,jms:jme):: &
     exch_h,      &!
@@ -357,8 +364,8 @@
     sub_thl1,sub_sqv1,det_thl1,det_sqv1
 
  real(kind_phys):: &
-    maxwidth1,maxmf1,ztop_plume1,excess_h1,excess_q1
-
+    maxwidth1,maxmf1,ztop_plume1,excess_h1,excess_q1,maxmf_dd1,maxtkeprod1,maxwidth_dd1,         &
+       cldtop_cooling1,ent_eff1
  real(kind_phys),dimension(:),allocatable:: &
     dqke1,qwt1,qshear1,qbuoy1,qdiss1
 
@@ -488,6 +495,11 @@
          ztop_plume1    = ztop_plume(i,j)
          excess_h1      = excess_h(i,j)
          excess_q1      = excess_q(i,j)
+         maxmf_dd1      = maxmf_dd(i,j)
+         maxwidth_dd1   = maxwidth_dd(i,j)
+         maxtkeprod1    = maxtkeprod(i,j)
+         cldtop_cooling1= cldtop_cooling(i,j)
+         ent_eff1       = ent_eff(i,j)
       endif
       !check for unearthly incoming surface fluxes. These threshold are only surpassed
       !when something unphysical is happening. If these limits are being surpassed,
@@ -523,13 +535,11 @@
       !when NOT cold-starting on the first time step, update input
       if (initflag .eq. 0 .or. restart) THEN
          !update sgs cloud info.
-         if (icloud_bl > 0) then
-            do k=kts,kte
-               qc_bl1(k)     = qc_bl(i,k,j)
-               qi_bl1(k)     = qi_bl(i,k,j)
-               cldfra_bl1(k) = cldfra_bl(i,k,j)
-            enddo
-         endif
+         do k=kts,kte
+            qc_bl1(k)     = qc_bl(i,k,j)
+            qi_bl1(k)     = qi_bl(i,k,j)
+            cldfra_bl1(k) = cldfra_bl(i,k,j)
+         enddo
 
          !turbulennce variables
          do k=kts,kte
@@ -666,7 +676,9 @@
             sub_thl1        = sub_thl1      , sub_sqv1    = sub_sqv1      , det_thl1    = det_thl1     , &
             det_sqv1        = det_sqv1      ,                                                            &
             maxwidth        = maxwidth1     , maxmf       = maxmf1        , ztop_plume  = ztop_plume1  , &
-            excess_h        = excess_h1     , excess_q    = excess_q1     ,                              &
+            excess_h        = excess_h1     , excess_q    = excess_q1     , maxmf_dd    = maxmf_dd1    , &
+            maxtkeprod      = maxtkeprod1   , cldtop_cooling=cldtop_cooling1,ent_eff    = ent_eff1     , &
+            maxwidth_dd     = maxwidth_dd1  ,                                                            &
             flag_qc         = flag_qc       , flag_qi     = flag_qi       , flag_qs     = flag_qs      , &
             flag_ozone      = flag_oz       , flag_qnc    = flag_qnc      , flag_qni    = flag_qni     , &
             flag_qnwfa      = flag_qnwfa    , flag_qnifa  = flag_qnifa    , flag_qnbca  = flag_qnbca   , &
@@ -678,7 +690,7 @@
             tke_budget         = tke_budget           , &
             bl_mynn_cloudpdf   = bl_mynn_cloudpdf     , &
             bl_mynn_mixlength  = bl_mynn_mixlength    , &
-            closure            = bl_mynn_closure      , &
+            bl_mynn_closure    = bl_mynn_closure      , &
             bl_mynn_edmf       = bl_mynn_edmf         , &
             bl_mynn_edmf_dd    = bl_mynn_edmf_dd      , &
             bl_mynn_edmf_mom   = bl_mynn_edmf_mom     , &
@@ -690,7 +702,6 @@
             bl_mynn_cloudmix   = bl_mynn_cloudmix     , &
             bl_mynn_mixqt      = bl_mynn_mixqt        , &
             bl_mynn_ess        = bl_mynn_ess          , &
-            icloud_bl          = icloud_bl            , &
             spp_pbl            = spp_pbl              , &
             kts = kts , kte = kte , errmsg = errmsg , errflg = errflg )
 
@@ -727,6 +738,11 @@
          ztop_plume(i,j)  = ztop_plume1
          excess_h(i,j)    = excess_h1
          excess_q(i,j)	  = excess_q1
+         maxmf_dd(i,j)    = maxmf_dd1
+         maxwidth_dd(i,j) = maxwidth_dd1
+         maxtkeprod(i,j)  = maxtkeprod1
+         cldtop_cooling(i,j)=cldtop_cooling1
+         ent_eff(i,j)     = ent_eff1
       endif
 
       !- Update 3d tendencies (conversions done above):
@@ -782,13 +798,11 @@
       endif
 
      !- Collect 3D ouput:
-      if (icloud_bl > 0) then
-         do k=kts,kte
-            qc_bl(i,k,j)     = qc_bl1(k)/(one - sqv1(k))
-            qi_bl(i,k,j)     = qi_bl1(k)/(one - sqv1(k))
-            cldfra_bl(i,k,j) = cldfra_bl1(k)
-         enddo
-      endif
+      do k=kts,kte
+         qc_bl(i,k,j)     = qc_bl1(k)/(one - sqv1(k))
+         qi_bl(i,k,j)     = qi_bl1(k)/(one - sqv1(k))
+         cldfra_bl(i,k,j) = cldfra_bl1(k)
+      enddo
 
       if (tke_budget .eq. 1) then
          do k=kts,kte
@@ -847,8 +861,9 @@
 !!
  subroutine mynnedmf_pre_run(kte,f_qc,f_qi,f_qs,qv,qc,qi,qs,sqv,sqc,sqi,sqs,errmsg,errflg)
 !=================================================================================================================
-
-!--- input arguments:
+   use module_bl_mynnedmf_common, only: kind_phys,zero,one
+   
+!---  input arguments:
  logical,intent(in):: &
     f_qc,      &! if true,the physics package includes the cloud liquid water mixing ratio.
     f_qi,      &! if true,the physics package includes the cloud ice mixing ratio.
@@ -920,8 +935,9 @@
 !!
  subroutine mynnedmf_post_run(kte,f_qc,f_qi,f_qs,delt,qv,qc,qi,qs,dqv,dqc,dqi,dqs,errmsg,errflg)
 !=================================================================================================================
-
-!--- input arguments:
+   use module_bl_mynnedmf_common, only: kind_phys,zero,one
+   
+!---  input arguments:
  logical,intent(in):: &
     f_qc, &! if true,the physics package includes the cloud liquid water mixing ratio.
     f_qi, &! if true,the physics package includes the cloud ice mixing ratio.

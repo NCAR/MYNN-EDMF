@@ -85,7 +85,7 @@
                   kts               , kte               , f_qc               , f_qi               , &
                   f_qs              , f_qoz             , f_nc               , f_ni               , &
                   f_nifa            , f_nwfa            , f_nbca             , initflag           , &
-                  do_restart        , do_DAcycling      , icloud_bl          , delt               , &
+                  do_restart        , do_DAcycling      , delt               ,                      &
                   dx                , xland             , ps                 , ts                 , &
                   qsfc              , ust               , ch                 , hfx                , &
                   qfx               , wspd              , znt                ,                      &
@@ -97,6 +97,8 @@
                   qoz               , rthraten          , pblh               , kpbl               , &
                   cldfra_bl         , qc_bl             , qi_bl              , maxwidth           , &
                   maxmf             , ztop_plume        , excess_h           , excess_q           , &
+                  maxwidth_dd       , maxmf_dd          , maxtkeprod         , cldtop_cooling     , &
+                  ent_eff           ,                                                               &
                   qke               ,                                                               &
                   qke_adv           , tsq               , qsq                , cov                , &
                   el_pbl            , rublten           , rvblten            , rthblten           , &
@@ -109,8 +111,7 @@
                   qshear            , qbuoy             , qdiss              , sh3d               , &
                   sm3d              , spp_pbl           , pattern_spp        ,                      &
                   bl_mynn_tkeadvect , bl_mynn_tkebudget , bl_mynn_cloudpdf   , bl_mynn_mixlength  , &
-                  bl_mynn_closure   , bl_mynn_stfunc    , bl_mynn_topdown    , bl_mynn_scaleaware , &
-                  bl_mynn_dheat_opt , bl_mynn_edmf      , bl_mynn_edmf_dd    , bl_mynn_edmf_mom   , &
+                  bl_mynn_closure   , bl_mynn_edmf      , bl_mynn_edmf_dd    , bl_mynn_edmf_mom   , &
                   bl_mynn_edmf_tke  , bl_mynn_output    , bl_mynn_mixscalars , bl_mynn_mixaerosols, &
                   bl_mynn_mixnumcon , bl_mynn_cloudmix  , bl_mynn_mixqt      , bl_mynn_ess        , &
                   errmsg            , errflg                                                        &
@@ -118,6 +119,8 @@
                )
 
 !=================================================================================================================
+ use module_bl_mynnedmf_common,only: kind_phys,zero,one
+   
 !--- input arguments:
  logical,intent(in):: &
     f_qc,               &! if true,the physics package includes the cloud liquid water mixing ratio.
@@ -143,10 +146,6 @@
  integer,intent(in):: &
     bl_mynn_cloudpdf,   &!
     bl_mynn_mixlength,  &!
-    bl_mynn_stfunc,     &!lara
-    bl_mynn_topdown,    &!lara
-    bl_mynn_scaleaware, &!lare
-    bl_mynn_dheat_opt,  &!lara
     bl_mynn_edmf,       &!
     bl_mynn_edmf_dd,    &!
     bl_mynn_edmf_mom,   &!
@@ -162,7 +161,6 @@
  
  integer,intent(in):: &
     initflag,           &!
-    icloud_bl,          &!
     spp_pbl              !
 
  real(kind_phys),intent(in):: &
@@ -278,7 +276,12 @@
     maxmf,       &!
     ztop_plume,  &!
     excess_h,    &!
-    excess_q
+    excess_q,    &
+    maxwidth_dd, &
+    maxmf_dd,    &
+    maxtkeprod,  &
+    cldtop_cooling,&
+    ent_eff 
 
  real(kind_phys),intent(out),dimension(ims:ime,kms:kme,jms:jme):: &
     exch_h,      &!
@@ -292,17 +295,24 @@
     qdiss         !
 
 !--- input arguments for PBL and free-tropospheric mixing of chemical species:
- logical,intent(in):: mix_chem
- integer,intent(in):: nchem,ndvel
-
- real(kind_phys),intent(in),dimension(ims:ime,jms:jme),optional:: frp_mean,emis_ant_no
- real(kind_phys),intent(in),dimension(ims:ime,jms:jme,ndvel),optional:: vd3d
- real(kind_phys),intent(inout),dimension(ims:ime,kms:kme,jms:jme,nchem),optional:: chem3d,settle3d
+ logical,intent(in),optional:: mix_chem
+ logical::mix_chem1
+ integer,intent(in),optional:: nchem,ndvel
+ integer::nchem1,ndvel1
  logical,intent(in),optional:: enh_mix
-
- real(kind_phys):: frp1,emisant_no1
- real(kind_phys),dimension(ndvel):: vd1
- real(kind_phys),dimension(kts:kte,nchem):: chem1,settle1
+! real(kind=kind_phys),intent(in),dimension(ims:ime,jms:jme),optional:: frp_mean,emis_ant_no
+! real(kind=kind_phys),intent(in),dimension(ims:ime,jms:jme,ndvel),optional:: vd3d
+! real(kind=kind_phys),intent(inout),dimension(ims:ime,kms:kme,jms:jme,nchem),optional:: chem3d,settle3d
+ real(kind_phys),intent(in),dimension(:,:),  optional:: frp_mean,emis_ant_no
+ real(kind_phys),intent(in),dimension(:,:,:),optional:: vd3d
+ real(kind_phys),intent(inout),dimension(:,:,:,:),optional:: chem3d,settle3d
+ !local smoke/chem arrays
+ real(kind=kind_phys):: frp1,emisant_no1
+ !real(kind=kind_phys),dimension(ndvel):: vd1
+ !real(kind=kind_phys),dimension(kts:kte,nchem):: chem1,settle1
+ real(kind_phys),allocatable,dimension(:):: vd1
+ real(kind_phys),allocatable,dimension(:,:):: chem1,settle1
+ 
 !generic scalar array support
  integer, parameter :: nscalars=1
  real(kind_phys),dimension(kts:kte,nscalars):: scalars
@@ -342,8 +352,9 @@
     edmfa1,edmfw1,edmfqt1,edmfthl1,edmfent1,edmfqc1, &
     subthl1,subsqv1,detthl1,detsqv1
 
- real(kind_phys):: &
-    maxwidth1,maxmf1,ztopplume1,excessh1,excessq1
+ real(kind=kind_phys):: &
+     maxwidth1,maxmf1,ztopplume1,excessh1,excessq1, &
+     maxwidth_dd1,maxmf_dd1,maxtkeprod1,cldtop_cooling1,ent_eff1
 
  real(kind_phys),dimension(kts:kte):: &
     exchh1,exchm1,dqke1,qwt1,qshear1,qbuoy1,qdiss1
@@ -492,6 +503,12 @@
 
     if(present(chem3d).and. present(settle3d) .and. present(vd3d) .and. &
        present(frp_mean) .and. present(emis_ant_no)) then
+       mix_chem1 = .true.
+       ndvel1    = ndvel
+       nchem1    = nchem
+       allocate(vd1(ndvel1))
+       allocate(chem1(kts:kte,nchem1))
+       allocate(settle1(kts:kte,nchem1))
        do ic = 1,nchem
          do k = kts,kte
             chem1(k,ic)   = chem3d(i,k,j,ic)
@@ -504,24 +521,30 @@
        frp1        = frp_mean(i,j)
        emisant_no1 = emis_ant_no(i,j)
     else
-       chem1       = 0._kind_phys
-       settle1     = 0._kind_phys
-       vd1         = 0._kind_phys
-       frp1        = 0._kind_phys
-       emisant_no1 = 0._kind_phys
+       mix_chem1   = .false.
+       ndvel1 	   = 1
+       nchem1 	   = 1
+       allocate(vd1(ndvel1))
+       allocate(chem1(kts:kte,nchem1))
+       allocate(settle1(kts:kte,nchem1))
+       chem1       = zero
+       settle1     = zero
+       vd1         = zero
+       frp1        = zero
+       emisant_no1 = zero
     endif
-    scalars     = 0.0
+    scalars     = zero
 
     do k = kts,kte
-       rqcblten1(k)   = 0._kind_phys
-       rqiblten1(k)   = 0._kind_phys
-       rqsblten1(k)   = 0._kind_phys
-       rqozblten1(k)  = 0._kind_phys
-       rncblten1(k)   = 0._kind_phys
-       rniblten1(k)   = 0._kind_phys
-       rnifablten1(k) = 0._kind_phys
-       rnwfablten1(k) = 0._kind_phys
-       rnbcablten1(k) = 0._kind_phys
+       rqcblten1(k)   = zero
+       rqiblten1(k)   = zero
+       rqsblten1(k)   = zero
+       rqozblten1(k)  = zero
+       rncblten1(k)   = zero
+       rniblten1(k)   = zero
+       rnifablten1(k) = zero
+       rnwfablten1(k) = zero
+       rnbcablten1(k) = zero
     enddo
 
     call mynnedmf( &
@@ -555,20 +578,22 @@
             sub_thl1        = subthl1       , sub_sqv1    = subsqv1       , det_thl1    = detthl1      , &
             det_sqv1        = detsqv1       ,                                                            &
             maxwidth        = maxwidth1     , maxmf       = maxmf1        , ztop_plume  = ztopplume1   , &
-            excess_h        = excessh1      , excess_q    = excessq1      ,                              &
+            excess_h        = excessh1      , excess_q    = excessq1      , maxwidth_dd = maxwidth_dd1 , &
+            maxmf_dd        = maxmf_dd1     , maxtkeprod  =maxtkeprod1    , cldtop_cooling=cldtop_cooling1,&
+            ent_eff         = ent_eff1      ,                                                            &
             flag_qc         = f_qc          , flag_qi     = f_qi          , flag_qs     = f_qs         , &
             flag_ozone      = f_qoz         , flag_qnc    = f_nc          , flag_qni    = f_ni         , &
             flag_qnwfa      = f_nwfa        , flag_qnifa  = f_nifa        , flag_qnbca  = f_nbca       , &
             pattern_spp_pbl1= pattern_spp1  ,                                                            &
-            mix_chem        = mix_chem      , enh_mix     = enh_mix       , nchem       = nchem        , &
-            ndvel           = ndvel         , chem1       = chem1         , emis_ant_no = emisant_no1  , &
+            mix_chem        = mix_chem1     , enh_mix     = enh_mix       , nchem       = nchem1       , &
+            ndvel           = ndvel1        , chem1       = chem1         , emis_ant_no = emisant_no1  , &
             frp             = frp1          , vdep        = vd1           , settle1     = settle1      , &
             nscalars        = nscalars      , scalars     = scalars       ,                              &
             bl_mynn_tkeadvect  = bl_mynn_tkeadvect    , &
             tke_budget         = bl_mynn_tkebudget    , &
             bl_mynn_cloudpdf   = bl_mynn_cloudpdf     , &
             bl_mynn_mixlength  = bl_mynn_mixlength    , &
-            closure            = bl_mynn_closure      , &
+            bl_mynn_closure    = bl_mynn_closure      , &
             bl_mynn_edmf       = bl_mynn_edmf         , &
             bl_mynn_edmf_dd    = bl_mynn_edmf_dd      , &
             bl_mynn_edmf_mom   = bl_mynn_edmf_mom     , &
@@ -580,7 +605,6 @@
             bl_mynn_cloudmix   = bl_mynn_cloudmix     , &
             bl_mynn_mixqt      = bl_mynn_mixqt        , &
             bl_mynn_ess        = bl_mynn_ess          , &
-            icloud_bl          = icloud_bl            , &
             spp_pbl            = spp_pbl              , &
             kts = kts , kte = kte , errmsg = errmsg , errflg = errflg )
 
@@ -676,11 +700,16 @@
     enddo
 
     !--- output arguments:
-    maxwidth(i,j)   = maxwidth1
-    maxmf(i,j)      = maxmf1
-    ztop_plume(i,j) = ztopplume1
-    excess_h(i,j)   = excessh1
-    excess_q(i,j)   = excessq1
+    maxwidth(i,j)      = maxwidth1
+    maxmf(i,j)         = maxmf1
+    ztop_plume(i,j)    = ztopplume1
+    excess_h(i,j)      = excessh1
+    excess_q(i,j)      = excessq1
+    maxwidth_dd(i,j)   = maxwidth_dd1
+    maxmf_dd(i,j)      = maxmf_dd1
+    maxtkeprod(i,j)    = maxtkeprod1
+    cldtop_cooling(i,j)= cldtop_cooling1
+    ent_eff(i,j)       = ent_eff1
 
     do k = kts,kte
        exch_h(i,k,j) = exchh1(k)
@@ -698,13 +727,16 @@
        enddo
     endif
 
-    if (mix_chem .and. present(chem3d)) then
+    if (mix_chem1 .and. present(chem3d)) then
        do ic = 1,nchem
           do k = kts,kte
              chem3d(i,k,j,ic) = max(1.e-12, chem1(k,ic))
           enddo
        enddo
     endif
+    deallocate(vd1)
+    deallocate(chem1)
+    deallocate(settle1)
 
  enddo !i
  enddo !j
@@ -761,7 +793,8 @@
 !!
  subroutine mynnedmf_pre_run(kte,f_qc,f_qi,f_qs,qv,qc,qi,qs,sqv,sqc,sqi,sqs,errmsg,errflg)
 !=================================================================================================================
-
+ use module_bl_mynnedmf_common,only: kind_phys,zero,one
+   
 !--- input arguments:
  logical,intent(in):: &
     f_qc,      &! if true,the physics package includes the cloud liquid water mixing ratio.
@@ -881,7 +914,7 @@
 !!
  subroutine mynnedmf_post_run(kte,f_qc,f_qi,f_qs,delt,qv,qc,qi,qs,dqv,dqc,dqi,dqs,errmsg,errflg)
 !=================================================================================================================
-
+ use module_bl_mynnedmf_common,only: kind_phys,one
 !--- input arguments:
  logical,intent(in):: &
     f_qc, &! if true,the physics package includes the cloud liquid water mixing ratio.
@@ -933,7 +966,7 @@
     do k = kts,kte
        sq = qc(k)/(one+qv(k))
        sqc(k) = sq + dqc(k)*delt
-       rq  = sqc(k)/(one-sqv(k))
+       rq  = sqc(k)*(one+sqv(k))
        dqc(k) = (rq - qc(k))/delt
     enddo
  endif
@@ -942,7 +975,7 @@
     do k = kts,kte
        sq = qi(k)/(one+qv(k))
        sqi(k) = sq + dqi(k)*delt
-       rq = sqi(k)/(one-sqv(k))
+       rq = sqi(k)*(one+sqv(k))
        dqi(k) = (rq - qi(k))/delt
     enddo
  endif
@@ -951,7 +984,7 @@
     do k = kts,kte
        sq = qs(k)/(one+qv(k))
        sqs(k) = sq + dqs(k)*delt
-       rq = sqs(k)/(one-sqv(k))
+       rq = sqs(k)*(one+sqv(k))
        dqs(k) = (rq - qs(k))/delt
     enddo
  endif

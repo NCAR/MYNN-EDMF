@@ -1,7 +1,8 @@
 FC     = gfortran
-FCFLAGS = -Dstandalone -fdefault-real-8 -fdefault-double-8 -g \
+FCFLAGS = --coverage -fprofile-arcs -ftest-coverage \
+	  -Dstandalone -fdefault-real-8 -fdefault-double-8 -g \
           -fbacktrace \
-	-fsanitize=address\
+	  -fsanitize=address\
           -fcheck=all \
           -Wall -Wextra -pedantic \
           -Wuninitialized -Wmaybe-uninitialized \
@@ -18,10 +19,10 @@ SRC = module_model_constants.F90 ccpp_kind_types.F90 ../WRF/module_bl_mynnedmf_c
 OBJ = module_model_constants.o ccpp_kind_types.o module_bl_mynnedmf_common.o module_bl_mynnedmf.o module_bl_mynnedmf_driver.o module_bl_mynnedmf_wrf_tests.o driver.o
 
 %.o: %.F90
-	$(FC) $(FCFLAGS) -c $(SRC)
+	$(FC) $(FCFLAGS) -c $(SRC) -lgcov
 
 driver: $(OBJ)
-	$(FC) $(FFLAGS) -o $@ $(OBJ) $(LDFLAGS)
+	$(FC) $(FFLAGS) -o $@ $(OBJ) $(LDFLAGS) -lgcov
 
 clean:
-	@rm -f *.mod *.o driver
+	@rm -f *.mod *.o driver *.gcda *.gcno *.gcov

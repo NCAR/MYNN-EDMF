@@ -49,7 +49,7 @@ module module_bl_mynnedmf_wrf_tests
     end subroutine init_mynn_edmf_flags
 
     !=================================================================================================================    
-    subroutine wrf_test(case,bl_mynn_closure,bl_mynn_cloudpdf,bl_mynn_mixlength,icloud_bl, &
+    subroutine wrf_test(case,bl_mynn_closure,bl_mynn_cloudpdf,bl_mynn_mixlength,           &
         bl_mynn_edmf,bl_mynn_edmf_dd,bl_mynn_edmf_mom,bl_mynn_edmf_tke,bl_mynn_cloudmix,   &
         bl_mynn_mixqt, bl_mynn_mixscalars, bl_mynn_mixaerosols,bl_mynn_mixnumcon,          &
         bl_mynn_ess,tke_budget)
@@ -70,7 +70,6 @@ module module_bl_mynnedmf_wrf_tests
         logical :: bl_mynn_tkeadvect, cycling
         integer :: bl_mynn_cloudpdf,                            &
                  bl_mynn_mixlength,                             &
-                 icloud_bl,                                     &
                  bl_mynn_edmf,                                  &
                  bl_mynn_edmf_dd,                               &
                  bl_mynn_edmf_mom,                              &
@@ -97,7 +96,8 @@ module module_bl_mynnedmf_wrf_tests
                 hfx(:,:), qfx(:,:), wspd(:,:), znt(:,:), uoce(:,:), voce(:,:), dx2d(:,:)
         ! output 2D arrays
         real, allocatable :: excess_h(:,:), excess_q(:,:), maxmf(:,:),maxwidth(:,:),         &
-                pblh(:,:),ztop_plume(:,:)
+             pblh(:,:),ztop_plume(:,:), maxwidth_dd(:,:), maxmf_dd(:,:), ent_eff(:,:),       &
+             maxtkeprod(:,:), cldtop_cooling(:,:)
         integer, allocatable :: kpbl(:,:)
         ! 3D arrays
         !real, allocatable, intent(inout) :: u(:,:,:), 
@@ -204,6 +204,11 @@ module module_bl_mynnedmf_wrf_tests
         allocate(ztop_plume(ims:ime, jms:jme))
         allocate(excess_h(ims:ime, jms:jme))
         allocate(excess_q(ims:ime, jms:jme))
+        allocate(maxwidth_dd(ims:ime, jms:jme))
+        allocate(maxmf_dd(ims:ime, jms:jme))
+        allocate(ent_eff(ims:ime, jms:jme))
+        allocate(maxtkeprod(ims:ime, jms:jme))
+        allocate(cldtop_cooling(ims:ime, jms:jme))
         ! Allocate 3D arrays
         allocate(qBUOY(ims:ime, kms:kme, jms:jme))
         allocate(qDISS(ims:ime, kms:kme, jms:jme))
@@ -421,9 +426,10 @@ module module_bl_mynnedmf_wrf_tests
                   qc=qc                , qi=qi               , qs=qs               , qnc=qnc            , &
                   qni=qni              , qnifa=qnifa         , qnwfa=qnwfa         , qnbca=qnbca        , &
 !                  qoz=qoz              ,                                                                  &
-                  rthraten=rthraten    , pblh=pblh           , kpbl=kpbl           ,                      &
-                  cldfra_bl=cldfra_bl  , qc_bl=qc_bl         , qi_bl=qi_bl         , maxwidth=maxwidth  , &
-                  maxmf=maxmf          ,ztop_plume=ztop_plume, excess_h=excess_h   , excess_q=excess_h  , &
+                  rthraten=rthraten    , pblh=pblh           , kpbl=kpbl           , maxwidth_dd=maxwidth_dd,&
+                  cldfra_bl=cldfra_bl  , qc_bl=qc_bl         , qi_bl=qi_bl          , maxwidth=maxwidth  , &
+                  maxmf=maxmf          , ztop_plume=ztop_plume, excess_h=excess_h   , excess_q=excess_h  , &
+                  maxmf_dd=maxmf_dd    ,  maxtkeprod=maxtkeprod, cldtop_cooling=cldtop_cooling, ent_eff=ent_eff, &
                   qke=qke              , qke_adv=qke_adv     ,                                            &
                   tsq=tsq              , qsq=qsq             , cov=cov             ,                      &
                   el_pbl=el_pbl        , rublten=rublten     , rvblten=rvblten     , rthblten=rthblten  , &
@@ -436,7 +442,7 @@ module module_bl_mynnedmf_wrf_tests
                   sub_thl=sub_thl3d    , sub_sqv=sub_sqv3d   , det_thl=det_thl3d   , det_sqv=det_sqv3d  , &
                   exch_h=exch_h        , exch_m=exch_m       , dqke=dqke           , qwt=qwt            , &
                   qshear=qshear        , qbuoy=qbuoy         , qdiss=qdiss         , sh3d=sh3d          , &
-                  sm3d=sm3d            , spp_pbl=spp_pbl     , pattern_spp=pattern_spp_pbl, icloud_bl=icloud_bl, &
+                  sm3d=sm3d            , spp_pbl=spp_pbl     , pattern_spp=pattern_spp_pbl,               &
                   bl_mynn_tkeadvect    = bl_mynn_tkeadvect   , tke_budget          = tke_budget         , &
                   bl_mynn_cloudpdf     = bl_mynn_cloudpdf    , bl_mynn_mixlength   = bl_mynn_mixlength  , &
                   bl_mynn_closure      = bl_mynn_closure     , bl_mynn_edmf        = bl_mynn_edmf       , &
@@ -446,9 +452,10 @@ module module_bl_mynnedmf_wrf_tests
                   bl_mynn_cloudmix     = bl_mynn_cloudmix    , bl_mynn_mixqt       = bl_mynn_mixqt      , &
                   bl_mynn_edmf_dd      = bl_mynn_edmf_dd     , bl_mynn_ess         = bl_mynn_ess        , &
 !#if(WRF_CHEM == 1)
-                  mix_chem=mix_chem    , nchem=nchem         , ndvel=ndvel         ,                      &
-!                  chem3d=chem3d        , settle3d=settle3d   , vd3d=vd3d           , enh_mix=enh_mix    , &
-!                  frp_mean=frp_mean    , emis_ant_no=emis_ant_no                   ,                      &
+                  mix_chem=mix_chem     , chem3d=chem3d         , vd3d=vd3d     , nchem=nchem           , &
+                  kdvel=kdvel           , ndvel=ndvel           , num_vert_mix=num_vert_mix             , &
+                  settle3d=settle3d     ,                                                                 &
+!                  frp_mean=frp_mean    , emis_ant_no=emis_ant_no       , enh_mix=enh_mix               , &
 !#endif
                   errmsg=errmsg        , errflg=errflg                                                    &
                   )
@@ -467,7 +474,8 @@ module module_bl_mynnedmf_wrf_tests
                 
         ! Deallocate 2D arrays
         deallocate(xland,ps,ts,qsfc,ust,ch,hfx,qfx,wspd,znt,uoce,voce,        &
-          kpbl,maxmf,maxwidth,pblh,ztop_plume,excess_h,excess_q)
+             kpbl,maxmf,maxwidth,pblh,ztop_plume,excess_h,excess_q,           &
+             maxwidth_dd,maxmf_dd,maxtkeprod,cldtop_cooling,ent_eff)
         ! deallocate 3D arrays
         deallocate(u,v,w,th,t3d,p,exner,rho,qv,qc,qi)        
         deallocate(dz,exch_h,exch_m)
