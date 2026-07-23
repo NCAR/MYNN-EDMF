@@ -110,10 +110,11 @@
                   exch_h            , exch_m            , dqke               , qwt                , &
                   qshear            , qbuoy             , qdiss              , sh3d               , &
                   sm3d              , spp_pbl           , pattern_spp        ,                      &
-                  bl_mynn_tkeadvect , bl_mynn_tkebudget , bl_mynn_cloudpdf   , bl_mynn_mixlength  , &
+                  bl_mynn_tkeadvect , tke_budget , bl_mynn_cloudpdf   , bl_mynn_mixlength  , &
                   bl_mynn_closure   , bl_mynn_edmf      , bl_mynn_edmf_dd    , bl_mynn_edmf_mom   , &
                   bl_mynn_edmf_tke  , bl_mynn_output    , bl_mynn_mixscalars , bl_mynn_mixaerosols, &
                   bl_mynn_mixnumcon , bl_mynn_cloudmix  , bl_mynn_mixqt      , bl_mynn_ess        , &
+                  dry_mixing_ratio  ,                                                               &
                   errmsg            , errflg                                                        &
                  ,mix_chem, nchem, ndvel, chem3d, settle3d, vd3d, enh_mix, frp_mean, emis_ant_no    &
                )
@@ -136,7 +137,8 @@
  logical,intent(in):: &
     bl_mynn_tkeadvect,  &
     do_restart,         &!
-    do_DAcycling         !
+    do_DAcycling,       &!
+    dry_mixing_ratio
 
  integer,intent(in):: &
     ids,ide,jds,jde,kds,kde, &
@@ -157,7 +159,7 @@
     bl_mynn_cloudmix,   &!
     bl_mynn_mixqt,      &!
     bl_mynn_ess,        &!
-    bl_mynn_tkebudget    !
+    tke_budget    !
  
  integer,intent(in):: &
     initflag,           &!
@@ -363,10 +365,13 @@
     sqv1,sqc1,sqi1,sqs1
 
 !-----------------------------------------------------------------------------------------------------------------
+ !for debug printing, set to true
+ logical, parameter:: debug = .false.
+
  if (debug) then
     write(0,*)"=============================================="
     write(0,*)"in mynn-edmf driver..."
-    write(0,*)"initflag=",initflag," restart =",restart
+    write(0,*)"initflag=",initflag," restart =",do_restart
  endif
 
  errmsg = " "
@@ -590,7 +595,7 @@
             frp             = frp1          , vdep        = vd1           , settle1     = settle1      , &
             nscalars        = nscalars      , scalars     = scalars       ,                              &
             bl_mynn_tkeadvect  = bl_mynn_tkeadvect    , &
-            tke_budget         = bl_mynn_tkebudget    , &
+            tke_budget         = tke_budget           , &
             bl_mynn_cloudpdf   = bl_mynn_cloudpdf     , &
             bl_mynn_mixlength  = bl_mynn_mixlength    , &
             bl_mynn_closure    = bl_mynn_closure      , &
@@ -616,11 +621,20 @@
     !--- inout arguments:
     pblh(i,j)  = pblh1
     kpbl(i,j)  = kpbl1
-    do k = kts,kte
-       cldfra_bl(i,k,j) = cldfrabl1(k)
-       qc_bl(i,k,j)     = qcbl1(k)
-       qi_bl(i,k,j)     = qibl1(k)
-    enddo
+
+   if (dry_mixing_ratio) then
+      do k=kts,kte
+         qc_bl(i,k,j)     = qcbl1(k)/(one - sqv1(k))
+         qi_bl(i,k,j)     = qibl1(k)/(one - sqv1(k))
+         cldfra_bl(i,k,j) = cldfrabl1(k)
+      enddo
+   else
+      do k=kts,kte
+         qc_bl(i,k,j)     = qcbl1(k)
+         qc_bl(i,k,j)     = qcbl1(k)
+         cldfra_bl(i,k,j) = cldfrabl1(k)
+      enddo
+   endif
 
     do k = kts,kte
        el_pbl(i,k,j)  = elpbl1(k)
