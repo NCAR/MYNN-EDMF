@@ -22,6 +22,7 @@ module module_bl_mynnedmf_wrf_tests
       flag_qnwfa,            &     ! if true,the physics package includes the "water-friendly" aerosol number concentration.
       flag_qnbca                   ! if true,the physics package includes the number concentration of black carbon.
     logical, parameter :: flag_oz = .false.
+    logical, parameter :: dry_mixing_ratio = .true. 
     contains
 
     subroutine init_mynn_edmf_flags()
@@ -107,6 +108,8 @@ module module_bl_mynnedmf_wrf_tests
                 exch_h(:,:,:), exch_m(:,:,:), pattern_spp_pbl(:,:,:)
         real, allocatable ::  rthraten(:,:,:), rublten(:,:,:), rvblten(:,:,:), rthblten(:,:,:)
 
+        !optional CHEM arrays
+        real, allocatable ::  chem3d(:,:,:,:), settle3d(:,:,:,:), vd3d(:,:,:) 
         !optional and output 3D arrays
         real, allocatable :: qc_bl(:,:,:), qi_bl(:,:,:), cldfra_bl(:,:,:)
         real, allocatable :: qke(:,:,:), qke_adv(:,:,:), el_pbl(:,:,:), sh3d(:,:,:),        &
@@ -162,7 +165,7 @@ module module_bl_mynnedmf_wrf_tests
         jms = 1
         jme = 1
         kms = 1
-        kme = nz
+        kme = nz+1
 
         its = 1
         ite = 1
@@ -413,30 +416,30 @@ module module_bl_mynnedmf_wrf_tests
                   kds=kds              , kde=kde             , ims=ims             , ime=ime            , &
                   jms=jms              , jme=jme             , kms=kms             , kme=kme            , &
                   its=its              , ite=ite             , jts=jts             , jte=jte            , &
-                  kts=kts              , kte=kte             , flag_qc=flag_qc     , flag_qi=flag_qi    , &
-                  flag_qs=flag_qs      , flag_qnc=flag_qnc   , flag_qni=flag_qni   , flag_oz=flag_oz    , &
-                  flag_qnifa=flag_qnifa,flag_qnwfa=flag_qnwfa,flag_qnbca=flag_qnbca,initflag=initflag   , &
+                  kts=kts              , kte=kte             , f_qc=flag_qc        , f_qi=flag_qi       , &
+                  f_qs=flag_qs         , f_qnc=flag_qnc      , f_qni=flag_qni      , f_qoz=flag_oz      , &
+                  f_qnifa=flag_qnifa   , f_qnwfa=flag_qnwfa  , f_qnbca=flag_qnbca  , initflag=initflag  , &
                   restart=restart      , cycling=cycling     , delt=delt           ,                      &
                   dx=dx2d              , xland=xland         , ps=ps               , ts=ts              , &
                   qsfc=qsfc            , ust=ust             , ch=ch               , hfx=hfx            , &
                   qfx=qfx              , wspd=wspd           , znt=znt             ,                      &
                   uoce=uoce            , voce=voce           , dz=dz               , u=u                , &
-                  v=v                  , w=w                 , th=th               , t3d=t3d            , &
+                  v=v                  , w=w                 , th=th               , tk=t3d             , &
                   p=p                  , exner=exner         , rho=rho             , qv=qv              , &
                   qc=qc                , qi=qi               , qs=qs               , qnc=qnc            , &
-                  qni=qni              , qnifa=qnifa         , qnwfa=qnwfa         , qnbca=qnbca        , &
+                  qni=qni              , qnifa=qnifa         , qnwfa=qnwfa         ,qnbca=qnbca         , &
 !                  qoz=qoz              ,                                                                  &
                   rthraten=rthraten    , pblh=pblh           , kpbl=kpbl           , maxwidth_dd=maxwidth_dd,&
-                  cldfra_bl=cldfra_bl  , qc_bl=qc_bl         , qi_bl=qi_bl          , maxwidth=maxwidth  , &
-                  maxmf=maxmf          , ztop_plume=ztop_plume, excess_h=excess_h   , excess_q=excess_h  , &
-                  maxmf_dd=maxmf_dd    ,  maxtkeprod=maxtkeprod, cldtop_cooling=cldtop_cooling, ent_eff=ent_eff, &
+                  cldfra_bl=cldfra_bl  , qc_bl=qc_bl         , qi_bl=qi_bl          , maxwidth=maxwidth , &
+                  maxmf=maxmf          , ztop_plume=ztop_plume, excess_h=excess_h   , excess_q=excess_q , &
+                  maxmf_dd=maxmf_dd    , maxtkeprod=maxtkeprod, cldtop_cooling=cldtop_cooling, ent_eff=ent_eff, &
                   qke=qke              , qke_adv=qke_adv     ,                                            &
                   tsq=tsq              , qsq=qsq             , cov=cov             ,                      &
                   el_pbl=el_pbl        , rublten=rublten     , rvblten=rvblten     , rthblten=rthblten  , &
                   rqvblten=rqvblten    , rqcblten=rqcblten   , rqiblten=rqiblten   , rqsblten=rqsblten  , &
                   rqncblten=rqncblten  , rqniblten=rqniblten , rqnifablten=rqnifablten,rqnwfablten=rqnwfablten, &
                   rqnbcablten=rqnbcablten,                                                                &
-!                  rqozblten=rqozblten  ,                                                                  &
+!                  rqozblten=rqozblten  ,                                                                 &
                   edmf_a=edmf_a        , edmf_w=edmf_w       ,                                            &
                   edmf_qt=edmf_qt      , edmf_thl=edmf_thl   , edmf_ent=edmf_ent   , edmf_qc=edmf_qc    , &
                   sub_thl=sub_thl3d    , sub_sqv=sub_sqv3d   , det_thl=det_thl3d   , det_sqv=det_sqv3d  , &
@@ -453,9 +456,10 @@ module module_bl_mynnedmf_wrf_tests
                   bl_mynn_edmf_dd      = bl_mynn_edmf_dd     , bl_mynn_ess         = bl_mynn_ess        , &
 !#if(WRF_CHEM == 1)
                   mix_chem=mix_chem     , chem3d=chem3d         , vd3d=vd3d     , nchem=nchem           , &
-                  kdvel=kdvel           , ndvel=ndvel           , num_vert_mix=num_vert_mix             , &
+                  ndvel=ndvel           ,                                                                 &
                   settle3d=settle3d     ,                                                                 &
 !                  frp_mean=frp_mean    , emis_ant_no=emis_ant_no       , enh_mix=enh_mix               , &
+                 dry_mixing_ratio=dry_mixing_ratio,                                                       &
 !#endif
                   errmsg=errmsg        , errflg=errflg                                                    &
                   )
