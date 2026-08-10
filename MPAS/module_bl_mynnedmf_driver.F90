@@ -1,6 +1,6 @@
 !> \file module_bl_mynnedmf_driver.F90
-!!  This serves as the interface between the MPAS PBL driver and the MYNN-EDMF
-!!  eddy-diffusivity mass-flux scheme in module_bl_mynnedmf.F90.
+!!  This serves as the unified interface between the WRF/MPAS PBL drivers and the MYNN-EDMF
+!!  turbulence scheme (in module_bl_mynnedmf.F90).
 
 !>\ingroup gsd_mynn_edmf
 !> The following references best describe the code within
@@ -9,7 +9,6 @@
 !=================================================================================================================
  module module_bl_mynnedmf_driver
   
-! use mpas_kind_types,only: kind_phys => RKIND
  use module_bl_mynnedmf_common,only: kind_phys,xlvcp,xlscp
  use module_bl_mynnedmf,only: mynnedmf
 
@@ -47,7 +46,7 @@
         &                ims,ime,jms,jme,kms,kme,  &
         &                its,ite,jts,jte,kts,kte
 
-   real,dimension(ims:ime,kms:kme,jms:jme),intent(inout) :: &                                                                                                                
+   real(kind_phys),dimension(ims:ime,kms:kme,jms:jme),intent(inout) :: &                                                                                                                
         &rublten,rvblten,rthblten,rqvblten,                 &
         &rqcblten,rqiblten,qke
 
@@ -79,8 +78,8 @@
  subroutine mynnedmf_finalize ()
  end subroutine mynnedmf_finalize
 !================================================================================================================= 
- subroutine mynnedmf_driver &
-                 (ids               , ide               , jds                , jde                , &
+ SUBROUTINE mynnedmf_driver(           &
+                  ids               , ide               , jds                , jde                , &
                   kds               , kde               , ims                , ime                , &
                   jms               , jme               , kms                , kme                , &
                   its               , ite               , jts                , jte                , &
@@ -91,34 +90,47 @@
                   dx                , xland             , ps                 , ts                 , &
                   qsfc              , ust               , ch                 , hfx                , &
                   qfx               , wspd              , znt                ,                      &
-                  uoce              , voce              , dz                 , u                  , &
-                  v                 , w                 , th                 , tk                 , &
-                  p                 , exner             , rho                , qv                 , &
-                  qc                , qi                , qs                 , qnc                , &
-                  qni               , qnifa             , qnwfa              , qnbca              , &
-                  qoz               , rthraten          , pblh               , kpbl               , &
-                  cldfra_bl         , qc_bl             , qi_bl              , maxwidth           , &
+                  uoce              , voce              ,                                           &
+                  !3d input
+                  dz                , u                 , v                  , w                  , &
+                  th                , tk                , p                  , exner              , &
+                  rho               , qv                , qc                 , qi                 , &
+                  qs                , qnc               , qni                , qnifa              , &
+                  qnwfa             , qnbca             , qoz                , rthraten           , &
+                  !3d output
+                  cldfra_bl         , qc_bl             , qi_bl              ,                      &
+                  qke               , qke_adv           ,                                           &
+                  tsq               , qsq               , cov                , el_pbl             , &
+                  !output tendencies
+                  rublten           , rvblten           , rthblten           ,                      &
+                  rqvblten          , rqcblten          , rqiblten           , rqsblten           , &
+                  rqncblten         , rqniblten         , rqnifablten        , rqnwfablten        , &
+                  rqnbcablten       , rqozblten         ,                                           &
+                  !2d output
+                  pblh              , kpbl              , maxwidth           ,                      &
                   maxmf             , ztop_plume        , excess_h           , excess_q           , &
                   maxwidth_dd       , maxmf_dd          , maxtkeprod         , cldtop_cooling     , &
                   ent_eff           ,                                                               &
-                  qke               ,                                                               &
-                  qke_adv           , tsq               , qsq                , cov                , &
-                  el_pbl            , rublten           , rvblten            , rthblten           , &
-                  rqvblten          , rqcblten          , rqiblten           , rqsblten           , &
-                  rqncblten         , rqniblten         , rqnifablten        , rqnwfablten        , &
-                  rqnbcablten       , rqozblten         , edmf_a             , edmf_w             , &
+                  !optional 3d output
+                  edmf_a            , edmf_w            ,                                           &
                   edmf_qt           , edmf_thl          , edmf_ent           , edmf_qc            , &
                   sub_thl           , sub_sqv           , det_thl            , det_sqv            , &
                   exch_h            , exch_m            , dqke               , qwt                , &
                   qshear            , qbuoy             , qdiss              , sh3d               , &
-                  sm3d              , spp_pbl           , pattern_spp        ,                      &
+                  sm3d              ,                                                               &
+                  !configuration options (+spp array)
+                  spp_pbl           , pattern_spp       ,                                           &
                   bl_mynn_tkeadvect , tke_budget        , bl_mynn_cloudpdf   , bl_mynn_mixlength  , &
-                  bl_mynn_closure   , bl_mynn_edmf      , bl_mynn_edmf_dd    , bl_mynn_edmf_mom   , &
-                  bl_mynn_edmf_tke  , bl_mynn_output    , bl_mynn_mixscalars , bl_mynn_mixaerosols, &
-                  bl_mynn_mixnumcon , bl_mynn_cloudmix  , bl_mynn_mixqt      , bl_mynn_ess        , &
+                  bl_mynn_closure   , bl_mynn_edmf      , bl_mynn_edmf_mom   , bl_mynn_edmf_tke   , &
+                  bl_mynn_output    , bl_mynn_mixscalars, bl_mynn_mixaerosols, bl_mynn_mixnumcon  , &
+                  bl_mynn_cloudmix  , bl_mynn_mixqt     , bl_mynn_edmf_dd    , bl_mynn_ess        , &
+                  !smoke/dust
+                  mix_chem          , nchem             , ndvel              , enh_mix            , &
+                  chem3d            , settle3d          , vd3d               ,                      &
+                  frp_mean          , emis_ant_no       ,                                           &
                   dry_mixing_ratio  ,                                                               &
+                  !ccpp error handling
                   errmsg            , errflg                                                        &
-                 ,mix_chem, nchem, ndvel, chem3d, settle3d, vd3d, enh_mix, frp_mean, emis_ant_no    &
                )
 
 !=================================================================================================================
@@ -304,6 +316,7 @@
  integer,intent(in),optional:: nchem,ndvel
  integer::nchem1,ndvel1
  logical,intent(in),optional:: enh_mix
+ logical::enh_mix1 
 ! real(kind=kind_phys),intent(in),dimension(ims:ime,jms:jme),optional:: frp_mean,emis_ant_no
 ! real(kind=kind_phys),intent(in),dimension(ims:ime,jms:jme,ndvel),optional:: vd3d
 ! real(kind=kind_phys),intent(inout),dimension(ims:ime,kms:kme,jms:jme,nchem),optional:: chem3d,settle3d
@@ -390,7 +403,13 @@
     allocate(qbuoy1(kts:kte),   source=zero)
     allocate(qdiss1(kts:kte),   source=zero)
  endif
- 
+
+ if (present(enh_mix)) then
+    enh_mix1 = enh_mix
+ else
+    enh_mix1 = .false.
+ endif  
+
  !---------------------------------------
  !Begin looping in the i- and j-direction
  !---------------------------------------
@@ -442,7 +461,7 @@
        p1(k)        = p(i,k,j)
        exner1(k)    = exner(i,k,j)
        rho1(k)      = rho(i,k,j)
-       qv1(k)       = qv(i,k,j)
+       qv1(k)       = max(1e-10_kind_phys, qv(i,k,j))
        rthraten1(k) = rthraten(i,k,j)
     enddo
     w1(kte+1) = w(i,kte+1,j)
@@ -627,7 +646,7 @@
             flag_ozone      = f_qoz         , flag_qnc    = f_qnc         , flag_qni    = f_qni        , &
             flag_qnwfa      = f_qnwfa       , flag_qnifa  = f_qnifa       , flag_qnbca  = f_qnbca      , &
             pattern_spp_pbl1= pattern_spp1  ,                                                            &
-            mix_chem        = mix_chem1     , enh_mix     = enh_mix       , nchem       = nchem1       , &
+            mix_chem        = mix_chem1     , enh_mix     = enh_mix1      , nchem       = nchem1       , &
             ndvel           = ndvel1        , chem1       = chem1         , emis_ant_no = emisant_no1  , &
             frp             = frp1          , vdep        = vd1           , settle1     = settle1      , &
             nscalars        = nscalars      , scalars     = scalars       ,                              &

@@ -240,7 +240,7 @@
  real(kind_phys),intent(inout),dimension(ims:ime,jms:jme):: &
     pblh          !
 
- real(kind_phys),intent(inout),dimension(ims:ime,kms:kme,jms:jme),optional:: &
+ real(kind_phys),intent(inout),dimension(ims:ime,kms:kme,jms:jme):: &
     cldfra_bl,   &!
     qc_bl,       &!
     qi_bl         ! 
@@ -302,7 +302,7 @@
     qbuoy,       &!
     qdiss         !
  
- real(kind_phys),intent(out),dimension(ims:ime,kms:kme,jms:jme),optional:: &
+ real(kind_phys),intent(inout),dimension(ims:ime,kms:kme,jms:jme),optional:: &
     edmf_a,      &!
     edmf_w,      &!
     edmf_qt,     &!
@@ -327,6 +327,7 @@
  real(kind=kind_phys),intent(inout),dimension(:,:,:,:),optional:: chem3d,settle3d
  
  logical,intent(inout),optional:: enh_mix
+ logical::enh_mix1
 
  !real(kind_phys),dimension(ndvel):: vd1
  !real(kind_phys),dimension(kts:kte,nchem):: chem1,settle1
@@ -410,7 +411,13 @@
     allocate(qbuoy1(kts:kte),   source=zero)
     allocate(qdiss1(kts:kte),   source=zero)
  endif
- 
+
+ if (present(enh_mix)) then
+    enh_mix1 = enh_mix
+ else
+    enh_mix1 = .false.
+ endif
+
  !---------------------------------------
  !Begin looping in the i- and j-direction
  !---------------------------------------
@@ -468,7 +475,7 @@
          rho1(k)     = rho(i,k,j)
          tk1(k)      = tk(i,k,j)
          dz1(k)      = dz(i,k,j)
-         qv1(k) = max(1e-10_kind_phys, qv(i,k,j))
+         qv1(k)      = max(1e-10_kind_phys, qv(i,k,j))
          rthraten1(k)= rthraten(i,k,j)
       enddo
       w1(kte+1) = w(i,kte+1,j) ! w1 not initialized at kte+1, but kte+1 is also not called in WRF
@@ -629,8 +636,8 @@
          settle1     = zero
          vd1         = zero
          frp1        = zero
-         emisant_no1       = zero
-      endif
+         emisant_no1 = zero
+      endif  
       
       !generic scalar array support
       scalars     = zero
@@ -685,7 +692,7 @@
             flag_ozone      = f_qoz         , flag_qnc    = f_qnc         , flag_qni    = f_qni        , &
             flag_qnwfa      = f_qnwfa       , flag_qnifa  = f_qnifa       , flag_qnbca  = f_qnbca      , &
             pattern_spp_pbl1= pattern_spp1  , scalars     = scalars       , nscalars    = nscalars     , &
-            mix_chem        = mix_chem1     , enh_mix     = enh_mix       , nchem       = nchem1       , &
+            mix_chem        = mix_chem1     , enh_mix     = enh_mix1      , nchem       = nchem1       , &
             ndvel           = ndvel1        , chem1       = chem1         , emis_ant_no = emisant_no1  , &
             frp             = frp1          , vdep        = vd1           , settle1     = settle1      , &
             bl_mynn_tkeadvect  = bl_mynn_tkeadvect    , &
