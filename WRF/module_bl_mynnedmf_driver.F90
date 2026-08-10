@@ -818,7 +818,7 @@
          maxmf(i,j)       = maxmf1
          ztop_plume(i,j)  = ztop_plume1
          excess_h(i,j)    = excess_h1
-         excess_q(i,j)	  = excess_q1
+         excess_q(i,j)    = excess_q1
          maxmf_dd(i,j)    = maxmf_dd1
          maxwidth_dd(i,j) = maxwidth_dd1
          maxtkeprod(i,j)  = maxtkeprod1
@@ -826,7 +826,7 @@
          ent_eff(i,j)     = ent_eff1
       endif
 
-      if ((tke_budget .eq. 1) .and. present(qwt)   .and. present(qbuoy) .and. present(qshear) .and. &
+      if (present(qwt) .and. present(qbuoy) .and. present(qshear) .and. &
        present(qdiss) .and. present(dqke)) then
          do k=kts,kte
             dqke(i,k,j)      = dqke1(k)
@@ -837,7 +837,7 @@
          enddo
       endif
 
-      if (mix_chem .and. present(chem3d)) then
+      if (mix_chem1 .and. present(chem3d)) then
          do n = 1,nchem
             do k = kts,kte
                chem3d(i,k,j,n) = max(1.e-12_kind_phys, chem1(k,n))
