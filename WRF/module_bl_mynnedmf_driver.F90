@@ -379,7 +379,10 @@
     maxmf_dd1,maxtkeprod1,maxwidth_dd1,cldtop_cooling1,ent_eff1
  
  real(kind_phys),dimension(kts:kte):: &
-    exch_h1,exch_m1,dqke1,qwt1,qshear1,qbuoy1,qdiss1
+    exch_h1,exch_m1
+
+ real(kind_phys), dimension(:), allocatable ::                                    &
+      dqke1,qWT1,qSHEAR1,qBUOY1,qDISS1
 
  real(kind_phys),dimension(kts:kte):: &
     sqv1,sqc1,sqi1,sqs1
@@ -398,15 +401,16 @@
 
  errmsg = " "
  errflg = 0
-   
-! jtf=min0(jte,jde-1)
-! itf=min0(ite,ide-1)
 
- !For now, initialized bogus array
- !ozone            =zero
- !rO3blten         =zero
- !kzero            =zero
-
+ !tke budget (optional arrays)
+ if (tke_budget == 1) then
+    allocate(dqke1(kts:kte),    source=zero)
+    allocate(qwt1(kts:kte),     source=zero)
+    allocate(qshear1(kts:kte),  source=zero)
+    allocate(qbuoy1(kts:kte),   source=zero)
+    allocate(qdiss1(kts:kte),   source=zero)
+ endif
+ 
  !---------------------------------------
  !Begin looping in the i- and j-direction
  !---------------------------------------
@@ -826,7 +830,7 @@
          ent_eff(i,j)     = ent_eff1
       endif
 
-      if (present(qwt) .and. present(qbuoy) .and. present(qshear) .and. &
+      if ((tke_budget .eq. 1) .and. present(qwt) .and. present(qbuoy) .and. present(qshear) .and. &
        present(qdiss) .and. present(dqke)) then
          do k=kts,kte
             dqke(i,k,j)      = dqke1(k)
@@ -851,13 +855,13 @@
    enddo  !end j-loop
    enddo  !end i-loop
 
-   !if (tke_budget .eq. 1) then
-   !   deallocate(dqke1     )
-   !   deallocate(qwt1      )
-   !   deallocate(qshear1   )
-   !   deallocate(qbuoy1    )
-   !   deallocate(qdiss1    )
-   !endif
+   if (tke_budget .eq. 1) then
+      deallocate(dqke1     )
+      deallocate(qwt1      )
+      deallocate(qshear1   )
+      deallocate(qbuoy1    )
+      deallocate(qdiss1    )
+   endif
  
    if (debug) then
       print*,"In mynnedmf_driver, at end"

@@ -357,11 +357,14 @@
     sub_thl1,sub_sqv1,det_thl1,det_sqv1
 
  real(kind=kind_phys):: &
-     maxwidth1,maxmf1,ztop_plume1,excess_h1,excess_q1, &
-     maxwidth_dd1,maxmf_dd1,maxtkeprod1,cldtop_cooling1,ent_eff1
+    maxwidth1,maxmf1,ztop_plume1,excess_h1,excess_q1, &
+    maxwidth_dd1,maxmf_dd1,maxtkeprod1,cldtop_cooling1,ent_eff1
 
  real(kind_phys),dimension(kts:kte):: &
-    exch_h1,exch_m1,dqke1,qwt1,qshear1,qbuoy1,qdiss1
+    exch_h1,exch_m1
+
+ real(kind_phys), dimension(:), allocatable :: &
+    dqke1,qWT1,qSHEAR1,qBUOY1,qDISS1
 
  real(kind_phys),dimension(kts:kte):: &
     sqv1,sqc1,sqi1,sqs1
@@ -379,6 +382,18 @@
  errmsg = " "
  errflg = 0
 
+ !tke budget (optional arrays)
+ if (tke_budget == 1) then
+    allocate(dqke1(kts:kte),    source=zero)
+    allocate(qwt1(kts:kte),     source=zero)
+    allocate(qshear1(kts:kte),  source=zero)
+    allocate(qbuoy1(kts:kte),   source=zero)
+    allocate(qdiss1(kts:kte),   source=zero)
+ endif
+ 
+ !---------------------------------------
+ !Begin looping in the i- and j-direction
+ !---------------------------------------
  do j = jts,jte
  do i = its,ite
      
@@ -786,6 +801,18 @@
  enddo !i
  enddo !j
 
+ if (tke_budget .eq. 1) then
+   deallocate(dqke1     )
+   deallocate(qwt1      )
+   deallocate(qshear1   )
+   deallocate(qbuoy1    )
+   deallocate(qdiss1    )
+endif
+
+ if (debug) then
+   print*,"In mynnedmf_driver, at end"
+ endif
+ 
  end subroutine mynnedmf_driver
 
 !=================================================================================================================
