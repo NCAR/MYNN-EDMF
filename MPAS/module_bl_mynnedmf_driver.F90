@@ -317,16 +317,16 @@
  integer::nchem1,ndvel1
  logical,intent(in),optional:: enh_mix
  logical::enh_mix1 
-! real(kind=kind_phys),intent(in),dimension(ims:ime,jms:jme),optional:: frp_mean,emis_ant_no
-! real(kind=kind_phys),intent(in),dimension(ims:ime,jms:jme,ndvel),optional:: vd3d
-! real(kind=kind_phys),intent(inout),dimension(ims:ime,kms:kme,jms:jme,nchem),optional:: chem3d,settle3d
+! real(kind_phys),intent(in),dimension(ims:ime,jms:jme),optional:: frp_mean,emis_ant_no
+! real(kind_phys),intent(in),dimension(ims:ime,jms:jme,ndvel),optional:: vd3d
+! real(kind_phys),intent(inout),dimension(ims:ime,kms:kme,jms:jme,nchem),optional:: chem3d,settle3d
  real(kind_phys),intent(in),dimension(:,:),  optional:: frp_mean,emis_ant_no
  real(kind_phys),intent(in),dimension(:,:,:),optional:: vd3d
  real(kind_phys),intent(inout),dimension(:,:,:,:),optional:: chem3d,settle3d
  !local smoke/chem arrays
- real(kind=kind_phys):: frp1,emisant_no1
- !real(kind=kind_phys),dimension(ndvel):: vd1
- !real(kind=kind_phys),dimension(kts:kte,nchem):: chem1,settle1
+ real(kind_phys):: frp1,emisant_no1
+ !real(kind_phys),dimension(ndvel):: vd1
+ !real(kind_phys),dimension(kts:kte,nchem):: chem1,settle1
  real(kind_phys),allocatable,dimension(:):: vd1
  real(kind_phys),allocatable,dimension(:,:):: chem1,settle1
  
@@ -369,7 +369,7 @@
     edmf_a1,edmf_w1,edmf_qt1,edmf_thl1,edmf_ent1,edmf_qc1, &
     sub_thl1,sub_sqv1,det_thl1,det_sqv1
 
- real(kind=kind_phys):: &
+ real(kind_phys):: &
     maxwidth1,maxmf1,ztop_plume1,excess_h1,excess_q1, &
     maxwidth_dd1,maxmf_dd1,maxtkeprod1,cldtop_cooling1,ent_eff1
 
