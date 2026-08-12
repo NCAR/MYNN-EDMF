@@ -540,6 +540,12 @@
        enddo
     endif
 
+    !find/fix negative mixing ratios
+!      call moisture_check2(kte, delt,                 &
+!                           delp(i,:), exner(i,:,j),   &
+!                           qv(i,:,j), qc(i,:,j),      &
+!                           qi(i,:,j), t3d(i,:,j)      )
+
     !In WRF/MPAS, mixing ratio is incoming; convert to specific contents:
     call mynnedmf_pre_run(kte    , f_qc      , f_qi    , f_qs    ,   &
                             qv1    , qc1     , qi1     , qs1     ,   &
@@ -549,20 +555,6 @@
     if (debug) then
       print*,"In mynnedmf driver, just before the call to mynnedmf"
     endif
-
-
-!      if (bl_mynn_edmf > 0) then
-!         maxwidth1      = maxwidth(i,j)
-!         maxmf1         = maxmf(i,j)
-!         ztopplume1    = ztop_plume(i,j)
-!         excessh1      = excess_h(i,j)
-!         excessq1      = excess_q(i,j)
-!         maxmf_dd1      = maxmf_dd(i,j)
-!         maxwidth_dd1   = maxwidth_dd(i,j)
-!         maxtkeprod1    = maxtkeprod(i,j)
-!         cldtop_cooling1= cldtop_cooling(i,j)
-!         ent_eff1       = ent_eff(i,j)
-!      endif
 
       !--- initialization of the stochastic forcing in the PBL:
       if(spp_pbl > 0 .and. present(pattern_spp)) then
@@ -597,13 +589,6 @@
          !kh1(k)  = exch_h(i,k,j)
          !km1(k)  = exch_m(i,k,j)
       enddo
-         !if (bl_mynn_tkeadvect) then
-         !   qke_adv1(kts:kte) = qke_adv(i,kts:kte,j)
-         !else
-         !   qke_adv1(kts:kte) = qke(i,kts:kte,j)
-         !endif
-      !endif
-      
 
       !Smoke/dust
       if (present(chem3d).and. present(settle3d) .and. present(vd3d) .and. &
@@ -637,7 +622,7 @@
          vd1         = zero
          frp1        = zero
          emisant_no1 = zero
-      endif  
+      endif
       
       !generic scalar array support
       scalars     = zero
@@ -875,7 +860,91 @@
    endif
 
  end subroutine mynnedmf_driver
+! ==================================================================
+ subroutine moisture_check2(kte, delt, dp, exner, &
+                             qv, qc, qi, th        )
+  !
+  ! If qc < qcmin, qi < qimin, or qv < qvmin happens in any layer,
+  ! force them to be larger than minimum value by (1) condensating 
+  ! water vapor into liquid or ice, and (2) by transporting water vapor 
+  ! from the very lower layer.
+  ! 
+  ! We then update the final state variables and tendencies associated
+  ! with this correction. If any condensation happens, update theta/temperature too.
+  ! Note that (qv,qc,qi,th) are the final state variables after
+  ! applying corresponding input tendencies and corrective tendencies.
 
+    use module_bl_mynnedmf_common, only: kind_phys,xlvcp,xlscp,zero,two,p5
+
+    implicit none
+    integer,         intent(in)     :: kte
+    real(kind_phys), intent(in)     :: delt
+    real(kind_phys), dimension(kte), intent(in)     :: dp
+    real(kind_phys), dimension(kte), intent(in)     :: exner
+    real(kind_phys), dimension(kte), intent(inout)  :: qv, qc, qi, th
+    integer   k
+    real(kind_phys) ::  dqc2, dqi2, dqv2, sum, aa, dum
+    real(kind_phys), parameter :: qvmin1= 1e-8,    & !min at k=1
+                                  qvmin = 1e-20,   & !min above k=1
+                                  qcmin = 0.0,     &
+                                  qimin = 0.0
+
+    do k = kte, 1, -1  ! From the top to the surface
+       dqc2 = max(zero, qcmin-qc(k)) !qc deficit (>=0)
+       dqi2 = max(zero, qimin-qi(k)) !qi deficit (>=0)
+
+       !update species
+       qc(k)  = qc(k)  +  dqc2
+       qi(k)  = qi(k)  +  dqi2
+       qv(k)  = qv(k)  -  dqc2 - dqi2
+       !for theta
+       !th(k)  = th(k)  +  xlvcp/exner(k)*dqc2 + &
+       !                   xlscp/exner(k)*dqi2
+       !for temperature
+       th(k)  = th(k)  +  xlvcp*dqc2 + &
+                          xlscp*dqi2
+
+       !then fix qv if lending qv made it negative
+       if (k .eq. 1) then
+          dqv2   = max(zero, qvmin1-qv(k)) !qv deficit (>=0)
+          qv(k)  = qv(k)  + dqv2
+          qv(k)  = max(qv(k),qvmin1)
+          dqv2   = zero
+       else
+          dqv2   = max(zero, qvmin-qv(k))  !qv deficit (>=0)
+          qv(k)  = qv(k)  + dqv2
+          qv(k-1)= qv(k-1)  - dqv2*dp(k)/dp(k-1)
+          qv(k)  = max(qv(k),qvmin)
+       endif
+       qc(k) = max(qc(k),qcmin)
+       qi(k) = max(qi(k),qimin)
+    end do
+
+    ! Extra moisture used to satisfy 'qv(1)>=qvmin' is proportionally
+    ! extracted from all the layers that has 'qv > 2*qvmin'. This fully
+    ! preserves column moisture.
+    if( dqv2 .gt. 1.e-20 ) then
+        sum = zero
+        do k = 1, kte
+           if( qv(k) .gt. two*qvmin ) sum = sum + qv(k)*dp(k)
+        enddo
+        aa = dqv2*dp(1)/max(1.e-20_kind_phys,sum)
+        if( aa .lt. p5 ) then
+            do k = 1, kte
+               if( qv(k) .gt. two*qvmin ) then
+                   dum    = aa*qv(k)
+                   qv(k)  = qv(k) - dum
+               endif
+            enddo
+        else
+        ! For testing purposes only (not yet found in any output):
+        !    write(*,*) 'Full moisture conservation is impossible'
+        endif
+    endif
+
+    return
+
+ end subroutine moisture_check2
 !=================================================================================================================
 !>\section arg_table_mynnedmf_pre_init
 !!\html\include mynnedmf_pre_init.html
