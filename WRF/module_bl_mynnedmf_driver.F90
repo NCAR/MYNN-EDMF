@@ -418,6 +418,13 @@
     enh_mix1 = .false.
  endif
 
+ if(present(chem3d).and. present(settle3d) .and. present(vd3d) .and. &
+    present(frp_mean) .and. present(emis_ant_no)) then
+    mix_chem1 = .true.
+ else
+    mix_chem1 = .false.
+ endif
+
  !---------------------------------------
  !Begin looping in the i- and j-direction
  !---------------------------------------
@@ -595,9 +602,7 @@
       end if
 
       !Smoke/dust
-      if (present(chem3d).and. present(settle3d) .and. present(vd3d) .and. &
-         present(frp_mean) .and. present(emis_ant_no)) then
-         mix_chem1 = .true.
+      if (mix_chem1) then
          ndvel1    = ndvel
          nchem1    = nchem
          allocate(vd1(ndvel1))
@@ -615,7 +620,6 @@
          frp1        = frp_mean(i,j)
          emisant_no1 = emis_ant_no(i,j)
       else
-         mix_chem1   = .false.
          ndvel1      = 1
          nchem1      = 1
          allocate(vd1(ndvel1))
