@@ -551,22 +551,31 @@
     pblh1 = pblh(i,j)
     kpbl1 = kpbl(i,j)
 
-    do k = kts,kte
-       cldfra_bl1(k) = cldfra_bl(i,k,j)
-       qc_bl1(k)     = qc_bl(i,k,j)
-       qi_bl1(k)     = qi_bl(i,k,j)
-    enddo
+    !when NOT cold-starting on the first time step, update input
+    if (initflag .eq. 0 .or. restart) then
+      !update sgs cloud info.
+      do k = kts,kte
+         cldfra_bl1(k) = cldfra_bl(i,k,j)
+         qc_bl1(k)     = qc_bl(i,k,j)
+         qi_bl1(k)     = qi_bl(i,k,j)
+      enddo
 
-    do k = kts,kte
-       el_pbl1(k)  = el_pbl(i,k,j)
-       qke1(k)    = qke(i,k,j)
-       qke_adv1(k) = qke_adv(i,k,j)
-       cov1(k)    = cov(i,k,j)
-       tsq1(k)    = tsq(i,k,j)   
-       qsq1(k)    = qsq(i,k,j)
-       sh1(k)     = sh3d(i,k,j)
-       sm1(k)     = sm3d(i,k,j)
-    enddo
+      !turbulence variables
+      do k = kts,kte
+         el_pbl1(k)  = el_pbl(i,k,j)
+         qke1(k)    = qke(i,k,j)
+      !   qke_adv1(k) = qke_adv(i,k,j)
+         cov1(k)    = cov(i,k,j)
+         tsq1(k)    = tsq(i,k,j)   
+         qsq1(k)    = qsq(i,k,j)
+         sh1(k)     = sh3d(i,k,j)
+         sm1(k)     = sm3d(i,k,j)
+         if (bl_mynn_tkeadvect) then
+            qke_adv1(kts:kte) = qke_adv(i,kts:kte,j)
+         else
+            qke_adv1(kts:kte) = qke(i,kts:kte,j)
+         endif          
+      enddo
 
     if(present(chem3d).and. present(settle3d) .and. present(vd3d) .and. &
        present(frp_mean) .and. present(emis_ant_no)) then
@@ -1148,7 +1157,7 @@ endif
     do k = kts,kte
        sq = qc(k)/(one+qv(k))
        sqc(k) = sq + dqc(k)*delt
-       rq  = sqc(k)*(one+sqv(k))
+       rq  = sqc(k)*(one-sqv(k))
        dqc(k) = (rq - qc(k))/delt
     enddo
  endif
@@ -1157,7 +1166,7 @@ endif
     do k = kts,kte
        sq = qi(k)/(one+qv(k))
        sqi(k) = sq + dqi(k)*delt
-       rq = sqi(k)*(one+sqv(k))
+       rq = sqi(k)*(one-sqv(k))
        dqi(k) = (rq - qi(k))/delt
     enddo
  endif
@@ -1166,7 +1175,7 @@ endif
     do k = kts,kte
        sq = qs(k)/(one+qv(k))
        sqs(k) = sq + dqs(k)*delt
-       rq = sqs(k)*(one+sqv(k))
+       rq = sqs(k)*(one-sqv(k))
        dqs(k) = (rq - qs(k))/delt
     enddo
  endif
