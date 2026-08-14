@@ -380,7 +380,7 @@
     maxmf_dd1,maxtkeprod1,maxwidth_dd1,cldtop_cooling1,ent_eff1
  
  real(kind_phys),dimension(kts:kte):: &
-    exch_h1,exch_m1
+    kh1,km1
 
  real(kind_phys), dimension(:), allocatable ::                                    &
       dqke1,qWT1,qSHEAR1,qBUOY1,qDISS1
@@ -470,7 +470,12 @@
       !output
       pblh1          = pblh(i,j)
       kpbl1          = kpbl(i,j)   
-     
+
+      !find/fix negative mixing ratios
+!      call moisture_check2(kte, delt,                 &
+!                           delp(i,:), exner(i,:,j),   &
+!                           qv(i,:,j), qc(i,:,j),      &
+!                           qi(i,:,j), t3d(i,:,j)      )     
       !3d variables
       do k=kts,kte
          u1(k)       = u(i,k,j)
@@ -667,8 +672,8 @@
             dth1            = rthblten1     , dqv1        = rqvblten1     , dqc1        = rqcblten1    , &
             dqi1            = rqiblten1     , dqs1        = rqsblten1     , dqnc1       = rqncblten1   , &
             dqni1           = rqniblten1    , dqnwfa1     = rqnwfablten1  , dqnifa1     = rqnifablten1 , &
-            dqnbca1         = rqnbcablten1  , dozone1     = rqozblten1    , kh1         = exch_h1       , &
-            km1             = exch_m1       , pblh        = pblh1         , kpbl        = kpbl1        , &
+            dqnbca1         = rqnbcablten1  , dozone1     = rqozblten1    , kh1         = kh1          , &
+            km1             = km1           , pblh        = pblh1         , kpbl        = kpbl1        , &
             el1             = el_pbl1       , dqke1       = dqke1         , qwt1        = qwt1         , &
             qshear1         = qshear1       , qbuoy1      = qbuoy1        , qdiss1      = qdiss1       , &
             sh1             = sh1           , sm1         = sm1           , qc_bl1      = qc_bl1       , &
@@ -742,8 +747,8 @@
          el_pbl(i,k,j)  = el_pbl1(k)
          sh3d(i,k,j)    = sh1(k)
          sm3d(i,k,j)    = sm1(k)
-         exch_h(i,k,j)  = exch_h1(k)
-         exch_m(i,k,j)  = exch_m1(k)
+         exch_h(i,k,j)  = kh(k)
+         exch_m(i,k,j)  = km1(k)
          tsq(i,k,j)     = tsq1(k)
          qsq(i,k,j)     = qsq1(k)
          cov(i,k,j)     = cov1(k)

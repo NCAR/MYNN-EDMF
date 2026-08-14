@@ -374,7 +374,7 @@
     maxwidth_dd1,maxmf_dd1,maxtkeprod1,cldtop_cooling1,ent_eff1
 
  real(kind_phys),dimension(kts:kte):: &
-    exch_h1,exch_m1
+    kh1,km1
 
  real(kind_phys), dimension(:), allocatable :: &
     dqke1,qWT1,qSHEAR1,qBUOY1,qDISS1
@@ -450,7 +450,14 @@
    if (qfx1 < -3e-4) then
       !print*,"qfx at i=",i," j=",j,"is unrealistic:",qfx1
       qfx1 = -3e-4_kind_phys
-   endif      
+   endif
+   
+      !find/fix negative mixing ratios
+!      call moisture_check2(kte, delt,                 &
+!                           delp(i,:), exner(i,:,j),   &
+!                           qv(i,:,j), qc(i,:,j),      &
+!                           qi(i,:,j), t3d(i,:,j)      )
+
     do k = kts,kte
        dz1(k)       = dz(i,k,j)
        u1(k)        = u(i,k,j)
@@ -525,12 +532,6 @@
           qoz1(k) = qoz(i,k,j)
        enddo
     endif
-
-      !find/fix negative mixing ratios
-!      call moisture_check2(kte, delt,                 &
-!                           delp(i,:), exner(i,:,j),   &
-!                           qv(i,:,j), qc(i,:,j),      &
-!                           qi(i,:,j), t3d(i,:,j)      )
 
     !--- conversion from mixing ratios to specific contents:
     call mynnedmf_pre_run(kte,f_qc,f_qi,f_qs,qv1,qc1,qi1,qs1,sqv1,sqc1, &
@@ -641,8 +642,8 @@
             dth1            = rthblten1     , dqv1        = rqvblten1     , dqc1        = rqcblten1    , &
             dqi1            = rqiblten1     , dqs1        = rqsblten1     , dqnc1       = rqncblten1   , &
             dqni1           = rqniblten1    , dqnwfa1     = rqnwfablten1  , dqnifa1     = rqnifablten1 , &
-            dqnbca1         = rqnbcablten1  , dozone1     = rqozblten1    , kh1         = exch_h1      , &
-            km1             = exch_m1       , pblh        = pblh1         , kpbl        = kpbl1        , &
+            dqnbca1         = rqnbcablten1  , dozone1     = rqozblten1    , kh1         = kh1          , &
+            km1             = km1           , pblh        = pblh1         , kpbl        = kpbl1        , &
             el1             = el_pbl1       , dqke1       = dqke1         , qwt1        = qwt1         , &
             qshear1         = qshear1       , qbuoy1      = qbuoy1        , qdiss1      = qdiss1       , &
             sh1             = sh1           , sm1         = sm1           , qc_bl1      = qc_bl1       , &
@@ -717,8 +718,8 @@
        qsq(i,k,j)     = qsq1(k)
        sh3d(i,k,j)    = sh1(k)
        sm3d(i,k,j)    = sm1(k)
-       exch_h(i,k,j)  = exch_h1(k)
-       exch_m(i,k,j)  = exch_m1(k)
+       exch_h(i,k,j)  = kh1(k)
+       exch_m(i,k,j)  = km1(k)
     enddo
 
     !--- inout tendencies:
@@ -1155,7 +1156,7 @@ endif
     do k = kts,kte
        sq = qc(k)/(one+qv(k))
        sqc(k) = sq + dqc(k)*delt
-       rq  = sqc(k)*(one-sqv(k))
+       rq  = sqc(k)/(one-sqv(k))
        dqc(k) = (rq - qc(k))/delt
     enddo
  endif
@@ -1164,7 +1165,7 @@ endif
     do k = kts,kte
        sq = qi(k)/(one+qv(k))
        sqi(k) = sq + dqi(k)*delt
-       rq = sqi(k)*(one-sqv(k))
+       rq = sqi(k)/(one-sqv(k))
        dqi(k) = (rq - qi(k))/delt
     enddo
  endif
@@ -1173,7 +1174,7 @@ endif
     do k = kts,kte
        sq = qs(k)/(one+qv(k))
        sqs(k) = sq + dqs(k)*delt
-       rq = sqs(k)*(one-sqv(k))
+       rq = sqs(k)/(one-sqv(k))
        dqs(k) = (rq - qs(k))/delt
     enddo
  endif
