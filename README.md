@@ -1,9 +1,9 @@
 # MYNN-EDMF
 
-![MYNN-EDMF logo](MYNNlogo.png)
+![MYNN-EDMF logo](MYNNlogo2.png)
 
 The Mellor–Yamada–Nakanishi–Niino (MYNN) (Nakanishi and Niino 2001, 2004, 2006, and
-2009) scheme has been adpted and developed (Olson et al. 2019) for use in NOAA's 
+2009) scheme has been adopted and developed (Olson et al. 2019) for use in NOAA's 
 operational forecast models (RAP, HRRR, and RRFS). It has been integrated into several 
 modeling framworks, such as the Advanced Research version of the Weather Research and 
 Forecasting Model (WRF-ARW) (Skamarock et al. 2019), Common Community Physics Package 
