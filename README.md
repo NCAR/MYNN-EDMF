@@ -1,14 +1,12 @@
-# MYNN-EDMF
-
 ![MYNN-EDMF logo](MYNNlogo2.png)
 
 The Mellor–Yamada–Nakanishi–Niino (MYNN) (Nakanishi and Niino 2001, 2004, 2006, and
 2009) scheme has been adopted and developed (Olson et al. 2019) for use in NOAA's 
 operational forecast models (RAP, HRRR, and RRFS). It has been integrated into several 
-modeling framworks, such as the Advanced Research version of the Weather Research and 
+modeling frameworks, such as the Advanced Research version of the Weather Research and 
 Forecasting Model (WRF-ARW) (Skamarock et al. 2019), Common Community Physics Package 
 (CCPP) (Bernardet et al. 2024), and Model Prediction Across Scales (MPAS) (Skamarock 
-et al. 2012). To centralize the development of the MYNN-EDMF for all applications, this 
+et al. 2012). To centralize the development of the MYNN-EDMF for all applications, the 
 scheme code has been universalized and made accessible in this stand-alone submodule 
 repository, which is then connected to each of the modeling frameworks mentioned above. 
 All future development of the MYNN-EDMF that is intended for NOAA’s operational use 
@@ -25,6 +23,6 @@ The older tech note (Olson et al. 2019; doi:10.25923/n9wm-be49) still has some v
 for example when referencing older code in HRRRv4/RAPv5, but the updated tech note must
 be used for referencing the contemporary code.
 
-If you'd like to contribute, please reach out to the lead developer, Joseph Olson at
+If you'd like to contribute, please reach out to the lead developer Joseph Olson at
 joseph.b.olson@noaa.gov, but keep in mind that all modification must be designed to work in
 all 3 model frameworks (WRF, MPAS, and CCPP). Thanks in advance.
