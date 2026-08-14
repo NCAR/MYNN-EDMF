@@ -747,7 +747,7 @@
          el_pbl(i,k,j)  = el_pbl1(k)
          sh3d(i,k,j)    = sh1(k)
          sm3d(i,k,j)    = sm1(k)
-         exch_h(i,k,j)  = kh(k)
+         exch_h(i,k,j)  = kh1(k)
          exch_m(i,k,j)  = km1(k)
          tsq(i,k,j)     = tsq1(k)
          qsq(i,k,j)     = qsq1(k)
