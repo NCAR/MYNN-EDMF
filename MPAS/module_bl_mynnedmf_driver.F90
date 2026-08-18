@@ -408,7 +408,14 @@
     enh_mix1 = enh_mix
  else
     enh_mix1 = .false.
- endif  
+ endif
+
+ if(present(chem3d).and. present(settle3d) .and. present(vd3d) .and. &
+    present(frp_mean) .and. present(emis_ant_no)) then
+    mix_chem1 = .true.
+ else
+    mix_chem1 = .false.
+ endif
 
  !---------------------------------------
  !Begin looping in the i- and j-direction
@@ -577,6 +584,7 @@
             qke_adv1(kts:kte) = qke(i,kts:kte,j)
          endif          
       enddo
+    endif
     
     !Smoke/dust
     if(mix_chem1) then
