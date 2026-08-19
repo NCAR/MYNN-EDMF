@@ -389,10 +389,10 @@
 #else
  logical, parameter :: dry_mixing_ratio = .false.
 #endif
- print *, 'dry_mixing_ratio ', dry_mixing_ratio
 
  if (debug) then
     write(0,*)"=============================================="
+    write(0,*)"dry_mixing_ratio ", dry_mixing_ratio
     write(0,*)"in mynn-edmf driver..."
     write(0,*)"initflag=",initflag," restart =",restart
  endif
@@ -415,9 +415,9 @@
     enh_mix1 = .false.
  endif
 
- if(present(chem3d).and. present(settle3d) .and. present(vd3d) .and. &
+ if(present(mix_chem) .and. present(chem3d).and. present(settle3d) .and. present(vd3d) .and. &
     present(frp_mean) .and. present(emis_ant_no)) then
-    mix_chem1 = .true.
+    mix_chem1 = mix_chem
  else
     mix_chem1 = .false.
  endif
@@ -546,8 +546,10 @@
     endif
 
     !--- conversion from mixing ratios to specific contents:
-    call mynnedmf_pre_run(kte,f_qc,f_qi,f_qs,qv1,qc1,qi1,qs1,sqv1,sqc1, &
-                         sqi1,sqs1,errmsg,errflg)
+    if (dry_mixing_ratio) then
+       call mynnedmf_pre_run(kte,f_qc,f_qi,f_qs,qv1,qc1,qi1,qs1,sqv1,sqc1, &
+                            sqi1,sqs1,errmsg,errflg)
+    endif
 
     !--- initialization of the stochastic forcing in the PBL:
     if(spp_pbl > 0 .and. present(pattern_spp)) then
@@ -610,8 +612,8 @@
        frp1        = frp_mean(i,j)
        emisant_no1 = emis_ant_no(i,j)
     else
-       ndvel1 	   = 1
-       nchem1 	   = 1
+       ndvel1      = 1
+       nchem1      = 1
        allocate(vd1(ndvel1))
        allocate(chem1(kts:kte,nchem1))
        allocate(settle1(kts:kte,nchem1))
@@ -635,6 +637,10 @@
        rqnbcablten1(k) = zero
     enddo
 
+    if (debug) then
+      print*,"In mynnedmf driver, just before the call to mynnedmf"
+    endif
+    
     call mynnedmf( &
             i               = i             , j           = j             ,                              &
             initflag        = initflag      , restart     = restart       , cycling     = cycling      , &
@@ -701,8 +707,10 @@
     endif
 
     !--- conversion of tendencies in terms of specific contents to in terms of mixing ratios:
-    call  mynnedmf_post_run(kte,f_qc,f_qi,f_qs,delt,qv1,qc1,qi1,qs1,rqvblten1,rqcblten1, &
-                           rqiblten1,rqsblten1,errmsg,errflg)
+    if (dry_mixing_ratio) then
+       call  mynnedmf_post_run(kte,f_qc,f_qi,f_qs,delt,qv1,qc1,qi1,qs1,rqvblten1,rqcblten1, &
+                              rqiblten1,rqsblten1,errmsg,errflg)
+    endif
 
     !--- inout arguments:
     pblh(i,j)  = pblh1

@@ -422,9 +422,9 @@
     enh_mix1 = .false.
  endif
 
- if(present(chem3d).and. present(settle3d) .and. present(vd3d) .and. &
+ if(present(mix_chem) .and. present(chem3d).and. present(settle3d) .and. present(vd3d) .and. &
     present(frp_mean) .and. present(emis_ant_no)) then
-    mix_chem1 = .true.
+    mix_chem1 = mix_chem
  else
     mix_chem1 = .false.
  endif
@@ -563,10 +563,12 @@
 !                           qi(i,:,j), t3d(i,:,j)      )
 
     !In WRF/MPAS, mixing ratio is incoming; convert to specific contents:
-    call mynnedmf_pre_run(kte    , f_qc      , f_qi    , f_qs    ,   &
-                            qv1    , qc1     , qi1     , qs1     ,   &
-                            sqv1   , sqc1    , sqi1    , sqs1    ,   &
-                            errmsg , errflg                          )
+    if (dry_mixing_ratio) then
+       call mynnedmf_pre_run(kte    , f_qc      , f_qi    , f_qs    ,   &
+                               qv1    , qc1     , qi1     , qs1     ,   &
+                               sqv1   , sqc1    , sqi1    , sqs1    ,   &
+                               errmsg , errflg                          )
+    endif
 
     if (debug) then
       print*,"In mynnedmf driver, just before the call to mynnedmf"
@@ -721,10 +723,12 @@
       endif
 
       !--- conversion of tendencies in terms of specific contents to mixing ratios:
-      call  mynnedmf_post_run(                                        &
-                kte      , f_qc     , f_qi     , f_qs ,    delt     , &
-                qv1      , qc1      , qi1      , qs1     , rqvblten1, &
-                rqcblten1, rqiblten1, rqsblten1, errmsg  , errflg     )
+      if (dry_mixing_ratio) then
+         call  mynnedmf_post_run(                                        &
+                   kte      , f_qc     , f_qi     , f_qs ,    delt     , &
+                   qv1      , qc1      , qi1      , qs1     , rqvblten1, &
+                   rqcblten1, rqiblten1, rqsblten1, errmsg  , errflg     )
+      endif
 
       !2d output
       kpbl(i,j)        = kpbl1
