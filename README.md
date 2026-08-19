@@ -1,4 +1,4 @@
-![MYNN-EDMF logo](MYNNlogo3.png)
+![MYNN-EDMF logo](images/MYNNlogo3.png)
 
 The Mellor–Yamada–Nakanishi–Niino (MYNN) (Nakanishi and Niino 2001, 2004, 2006, and
 2009) eddy-diffusivity/mass-flux scheme has been adopted and developed (Olson et al. 2019) for 
