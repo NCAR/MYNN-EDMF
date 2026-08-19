@@ -22,7 +22,7 @@ module module_bl_mynnedmf_wrf_tests
       flag_qnwfa,            &     ! if true,the physics package includes the "water-friendly" aerosol number concentration.
       flag_qnbca                   ! if true,the physics package includes the number concentration of black carbon.
     logical, parameter :: flag_oz = .false.
-    logical, parameter :: dry_mixing_ratio = .true. 
+    
     contains
 
     subroutine init_mynn_edmf_flags()
@@ -529,7 +529,6 @@ module module_bl_mynnedmf_wrf_tests
                   ndvel=ndvel           ,                                                                 &
                   settle3d=settle3d     ,                                                                 &
 !                  frp_mean=frp_mean    , emis_ant_no=emis_ant_no       , enh_mix=enh_mix               , &
-                 dry_mixing_ratio=dry_mixing_ratio,                                                       &
 !#endif
                   errmsg=errmsg        , errflg=errflg                                                    &
                   )

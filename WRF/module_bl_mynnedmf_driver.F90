@@ -133,7 +133,6 @@
                   mix_chem          , nchem             , ndvel              , enh_mix            , &
                   chem3d            , settle3d          , vd3d               ,                      &
                   frp_mean          , emis_ant_no       ,                                           &
-                  dry_mixing_ratio  ,                                                               &
                   !ccpp error handling
                   errmsg            , errflg                                                        &
                )
@@ -154,9 +153,8 @@
  logical, intent(in) ::    &
     bl_mynn_tkeadvect,     &
     cycling,               &
-    restart,               &
-    dry_mixing_ratio
- 
+    restart
+
  integer,intent(in):: &
     ids,ide,jds,jde,kds,kde, &
     ims,ime,jms,jme,kms,kme, &
@@ -392,6 +390,12 @@
 
  !for debug printing, set to true
  logical, parameter:: debug = .false.
+ 
+#if ((EM_CORE == 1) || defined(mpas))
+ logical, parameter :: dry_mixing_ratio = .true.
+#else
+ logical, parameter :: dry_mixing_ratio = .false.
+#endif
 
 !-----------------------------------------------------------------------------------------------------------------
  if (debug) then
