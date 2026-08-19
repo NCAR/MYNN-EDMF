@@ -1,5 +1,5 @@
 ! Module for MYNN EDMF scheme tests
-module module_bl_mynnedmf_wrf_tests
+module module_bl_mynnedmf_tests
     use module_bl_mynnedmf_driver
     use netcdf
     use, intrinsic :: ieee_exceptions
@@ -48,7 +48,7 @@ module module_bl_mynnedmf_wrf_tests
     end subroutine init_mynn_edmf_flags
 
     !=================================================================================================================    
-    subroutine wrf_test(case,bl_mynn_closure,bl_mynn_cloudpdf,bl_mynn_mixlength,           &
+    subroutine mynnedmf_test(case,bl_mynn_closure,bl_mynn_cloudpdf,bl_mynn_mixlength,           &
         bl_mynn_edmf,bl_mynn_edmf_dd,bl_mynn_edmf_mom,bl_mynn_edmf_tke,bl_mynn_cloudmix,   &
         bl_mynn_mixqt, bl_mynn_mixscalars, bl_mynn_mixaerosols,bl_mynn_mixnumcon,          &
         bl_mynn_ess,tke_budget,restart_in,                                                 &
@@ -660,7 +660,7 @@ module module_bl_mynnedmf_wrf_tests
                   ! , qnbca_loc, &
                   ! rqsblten_loc, rqncblten_loc, rqniblten_loc, rqnifablten_loc, &
                   ! rqnwfablten_loc, rqnbcablten_loc)
-   end subroutine wrf_test
+   end subroutine mynnedmf_test
 
 
    subroutine restart_test(case,bl_mynn_closure,bl_mynn_cloudpdf,bl_mynn_mixlength,   &
@@ -708,7 +708,7 @@ module module_bl_mynnedmf_wrf_tests
         print*, '=== MYNN-EDMF restart test, case: ', trim(case), ', n_restart = ', n_restart, ' ==='
 
         !--- before restart: t=2..n_restart ---
-        call wrf_test(case=case,bl_mynn_closure=bl_mynn_closure,bl_mynn_cloudpdf=bl_mynn_cloudpdf,                     &
+        call mynnedmf_test(case=case,bl_mynn_closure=bl_mynn_closure,bl_mynn_cloudpdf=bl_mynn_cloudpdf,                     &
                 bl_mynn_mixlength=bl_mynn_mixlength,bl_mynn_edmf=bl_mynn_edmf,bl_mynn_edmf_dd=bl_mynn_edmf_dd,         &
                 bl_mynn_edmf_mom=bl_mynn_edmf_mom,bl_mynn_edmf_tke=bl_mynn_edmf_tke,bl_mynn_cloudmix=bl_mynn_cloudmix, &
                 bl_mynn_mixqt=bl_mynn_mixqt,bl_mynn_mixscalars=bl_mynn_mixscalars,                                     &
@@ -723,7 +723,7 @@ module module_bl_mynnedmf_wrf_tests
                 sh=sh1,sm=sm1,qke_adv=qke_adv1,pblh=pblh1)
 
         ! --- after restart, t=n_restart+1..nt---
-        call wrf_test(case=case,bl_mynn_closure=bl_mynn_closure,bl_mynn_cloudpdf=bl_mynn_cloudpdf,                     &
+        call mynnedmf_test(case=case,bl_mynn_closure=bl_mynn_closure,bl_mynn_cloudpdf=bl_mynn_cloudpdf,                     &
                 bl_mynn_mixlength=bl_mynn_mixlength,bl_mynn_edmf=bl_mynn_edmf,bl_mynn_edmf_dd=bl_mynn_edmf_dd,         &
                 bl_mynn_edmf_mom=bl_mynn_edmf_mom,bl_mynn_edmf_tke=bl_mynn_edmf_tke,bl_mynn_cloudmix=bl_mynn_cloudmix, &
                 bl_mynn_mixqt=bl_mynn_mixqt,bl_mynn_mixscalars=bl_mynn_mixscalars,                                     &
@@ -739,7 +739,7 @@ module module_bl_mynnedmf_wrf_tests
                 pblh=pblh1)
 
         !--- baseline: continuous run, t=2..nt ---
-        call wrf_test(case=case,bl_mynn_closure=bl_mynn_closure,bl_mynn_cloudpdf=bl_mynn_cloudpdf,                     &
+        call mynnedmf_test(case=case,bl_mynn_closure=bl_mynn_closure,bl_mynn_cloudpdf=bl_mynn_cloudpdf,                     &
                 bl_mynn_mixlength=bl_mynn_mixlength,bl_mynn_edmf=bl_mynn_edmf,bl_mynn_edmf_dd=bl_mynn_edmf_dd,         &
                 bl_mynn_edmf_mom=bl_mynn_edmf_mom,bl_mynn_edmf_tke=bl_mynn_edmf_tke,bl_mynn_cloudmix=bl_mynn_cloudmix, &
                 bl_mynn_mixqt=bl_mynn_mixqt,bl_mynn_mixscalars=bl_mynn_mixscalars,                                     &
@@ -774,5 +774,5 @@ module module_bl_mynnedmf_wrf_tests
 
    end subroutine restart_test
 
-end module module_bl_mynnedmf_wrf_tests
+end module module_bl_mynnedmf_tests
 
