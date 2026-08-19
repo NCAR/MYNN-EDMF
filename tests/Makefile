@@ -1,14 +1,15 @@
 FC     = gfortran
 FCFLAGS = --coverage -fprofile-arcs -ftest-coverage \
-	  -Dstandalone -fdefault-real-8 -fdefault-double-8 -g \
+	      -Dstandalone -Dmpas \
+          -fdefault-real-8 -fdefault-double-8 -g \
           -fbacktrace \
-	  -fsanitize=address\
+	      -fsanitize=address\
           -fcheck=all \
           -Wall -Wextra -pedantic \
           -Wuninitialized -Wmaybe-uninitialized \
           -ffpe-trap=invalid,zero,overflow \
-  	  -finit-real=snan \
-	  -finit-integer=-999 \
+  	      -finit-real=snan \
+	      -finit-integer=-999 \
           -finit-logical=false \
           -finit-character=65 \
           -ffpe-summary=all \
