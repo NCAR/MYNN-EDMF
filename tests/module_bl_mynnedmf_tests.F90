@@ -48,14 +48,14 @@ module module_bl_mynnedmf_tests
     end subroutine init_mynn_edmf_flags
 
     !=================================================================================================================    
-    subroutine mynnedmf_test(case,bl_mynn_closure,bl_mynn_cloudpdf,bl_mynn_mixlength,           &
+    subroutine mynnedmf_test(case,bl_mynn_closure,bl_mynn_cloudpdf,bl_mynn_mixlength,      &
         bl_mynn_edmf,bl_mynn_edmf_dd,bl_mynn_edmf_mom,bl_mynn_edmf_tke,bl_mynn_cloudmix,   &
         bl_mynn_mixqt, bl_mynn_mixscalars, bl_mynn_mixaerosols,bl_mynn_mixnumcon,          &
-        bl_mynn_ess,tke_budget,restart_in,                                                 &
+        bl_mynn_ess,tke_budget,bl_mynn_diags, restart_in,                                  &
         t_start_in, t_end_in, u, v, th, qv, qc, qi,                                        &
         rublten, rvblten, rthblten, rqvblten, rqcblten, rqiblten,                          &
         qc_bl, qi_bl, cldfra_bl, el_pbl, qke, qsq, tsq, cov,                               &
-        sh, sm, qke_adv,pblh)       
+        sh, sm, qke_adv, pblh)       
         
         implicit none
         
@@ -85,7 +85,8 @@ module module_bl_mynnedmf_tests
                  bl_mynn_mixnumcon,                             &
                  bl_mynn_ess,                                   &
                  spp_pbl,                                       &
-                 tke_budget
+                 tke_budget,                                    &
+                 bl_mynn_diags
         real ::  bl_mynn_closure
         real :: delt,dxc
 
@@ -97,6 +98,7 @@ module module_bl_mynnedmf_tests
         ! --- optional interface for restart ---
         integer, intent(in), optional :: t_start_in, t_end_in
         logical, intent(in), optional :: restart_in
+
         real, dimension(:,:,:), allocatable, intent(inout),  optional :: u,v,th,qv,qc,qi
         real, dimension(:,:,:), allocatable, intent(inout),  optional :: rublten,rvblten,rthblten,  &
                                                                         rqvblten,rqcblten,rqiblten
@@ -116,6 +118,7 @@ module module_bl_mynnedmf_tests
              maxtkeprod(:,:), cldtop_cooling(:,:)
         integer, allocatable :: kpbl(:,:)
         real, allocatable :: pblh_loc(:,:)
+        real, allocatable :: lwp(:,:), iwp(:,:), swp(:,:)
         
         ! 3D arrays
         real, allocatable :: u_loc(:,:,:),v_loc(:,:,:), w_loc(:,:,:), th_loc(:,:,:), t3d_loc(:,:,:),& 
@@ -242,7 +245,12 @@ module module_bl_mynnedmf_tests
         allocate(ent_eff(ims:ime, jms:jme))
         allocate(maxtkeprod(ims:ime, jms:jme))
         allocate(cldtop_cooling(ims:ime, jms:jme))
-        
+
+        ! allocate 2D diagnostic fields
+        allocate(lwp(ims:ime, jms:jme))
+        allocate(iwp(ims:ime, jms:jme))
+        allocate(swp(ims:ime, jms:jme))
+
         ! allocate 3D arrays
         allocate(qBUOY_loc(ims:ime, kms:kme, jms:jme))
         allocate(qDISS_loc(ims:ime, kms:kme, jms:jme))
@@ -503,6 +511,7 @@ module module_bl_mynnedmf_tests
                   cldfra_bl=cldfra_bl_loc  , qc_bl=qc_bl_loc         , qi_bl=qi_bl_loc          , maxwidth=maxwidth , &
                   maxmf=maxmf          , ztop_plume=ztop_plume, excess_h=excess_h   , excess_q=excess_q , &
                   maxmf_dd=maxmf_dd    , maxtkeprod=maxtkeprod, cldtop_cooling=cldtop_cooling, ent_eff=ent_eff, &
+                  lwp=lwp              , iwp=iwp              , swp=swp,                                        &
                   qke=qke_loc              , qke_adv=qke_adv_loc     ,                                            &
                   tsq=tsq_loc              , qsq=qsq_loc             , cov=cov_loc             ,                      &
                   el_pbl=el_pbl_loc        , rublten=rublten_loc     , rvblten=rvblten_loc     , rthblten=rthblten_loc  , &
@@ -524,6 +533,7 @@ module module_bl_mynnedmf_tests
                   bl_mynn_mixaerosols  = bl_mynn_mixaerosols , bl_mynn_mixnumcon   = bl_mynn_mixnumcon  , &
                   bl_mynn_cloudmix     = bl_mynn_cloudmix    , bl_mynn_mixqt       = bl_mynn_mixqt      , &
                   bl_mynn_edmf_dd      = bl_mynn_edmf_dd     , bl_mynn_ess         = bl_mynn_ess        , &
+                  bl_mynn_diags        = bl_mynn_diags       ,                                            &
 !#if(WRF_CHEM == 1)
                   mix_chem=mix_chem     , chem3d=chem3d         , vd3d=vd3d     , nchem=nchem           , &
                   ndvel=ndvel           ,                                                                 &
@@ -668,7 +678,8 @@ module module_bl_mynnedmf_tests
                                 bl_mynn_edmf_tke,bl_mynn_cloudmix,                    &
                                 bl_mynn_mixqt, bl_mynn_mixscalars,                    &
                                 bl_mynn_mixaerosols,bl_mynn_mixnumcon,                &
-                                bl_mynn_ess,tke_budget,n_restart_in,tol_in)
+                                bl_mynn_ess,tke_budget,bl_mynn_diags,                 &
+                                n_restart_in,tol_in)
 
         implicit none
         character(len=*),intent(in)  :: case
@@ -676,7 +687,7 @@ module module_bl_mynnedmf_tests
                                         bl_mynn_edmf_dd, bl_mynn_edmf_mom, bl_mynn_edmf_tke, &
                                         bl_mynn_cloudmix, bl_mynn_mixqt, bl_mynn_mixscalars, &
                                         bl_mynn_mixaerosols, bl_mynn_mixnumcon, bl_mynn_ess, & 
-                                        tke_budget
+                                        tke_budget, bl_mynn_diags
         real, intent(in)             :: bl_mynn_closure
         integer, intent(in), optional :: n_restart_in
         real,    intent(in), optional :: tol_in
@@ -708,12 +719,12 @@ module module_bl_mynnedmf_tests
         print*, '=== MYNN-EDMF restart test, case: ', trim(case), ', n_restart = ', n_restart, ' ==='
 
         !--- before restart: t=2..n_restart ---
-        call mynnedmf_test(case=case,bl_mynn_closure=bl_mynn_closure,bl_mynn_cloudpdf=bl_mynn_cloudpdf,                     &
+        call mynnedmf_test(case=case,bl_mynn_closure=bl_mynn_closure,bl_mynn_cloudpdf=bl_mynn_cloudpdf,                &
                 bl_mynn_mixlength=bl_mynn_mixlength,bl_mynn_edmf=bl_mynn_edmf,bl_mynn_edmf_dd=bl_mynn_edmf_dd,         &
                 bl_mynn_edmf_mom=bl_mynn_edmf_mom,bl_mynn_edmf_tke=bl_mynn_edmf_tke,bl_mynn_cloudmix=bl_mynn_cloudmix, &
                 bl_mynn_mixqt=bl_mynn_mixqt,bl_mynn_mixscalars=bl_mynn_mixscalars,                                     &
                 bl_mynn_mixaerosols=bl_mynn_mixaerosols,bl_mynn_mixnumcon=bl_mynn_mixnumcon,                           &
-                bl_mynn_ess=bl_mynn_ess,tke_budget=tke_budget,                                                         &
+                bl_mynn_ess=bl_mynn_ess,tke_budget=tke_budget,bl_mynn_diags=bl_mynn_diags,                             &
                 t_end_in=n_restart,                                                                                    &
                 u=u1,v=v1,th=th1,qv=qv1,qc=qc1,qi=qi1,                                                                 &
                 rublten=ru1,rvblten=rv1,rthblten=rth1,                                                                 &
@@ -723,12 +734,12 @@ module module_bl_mynnedmf_tests
                 sh=sh1,sm=sm1,qke_adv=qke_adv1,pblh=pblh1)
 
         ! --- after restart, t=n_restart+1..nt---
-        call mynnedmf_test(case=case,bl_mynn_closure=bl_mynn_closure,bl_mynn_cloudpdf=bl_mynn_cloudpdf,                     &
+        call mynnedmf_test(case=case,bl_mynn_closure=bl_mynn_closure,bl_mynn_cloudpdf=bl_mynn_cloudpdf,                &
                 bl_mynn_mixlength=bl_mynn_mixlength,bl_mynn_edmf=bl_mynn_edmf,bl_mynn_edmf_dd=bl_mynn_edmf_dd,         &
                 bl_mynn_edmf_mom=bl_mynn_edmf_mom,bl_mynn_edmf_tke=bl_mynn_edmf_tke,bl_mynn_cloudmix=bl_mynn_cloudmix, &
                 bl_mynn_mixqt=bl_mynn_mixqt,bl_mynn_mixscalars=bl_mynn_mixscalars,                                     &
                 bl_mynn_mixaerosols=bl_mynn_mixaerosols,bl_mynn_mixnumcon=bl_mynn_mixnumcon,                           &
-                bl_mynn_ess=bl_mynn_ess,tke_budget=tke_budget,                                                         &
+                bl_mynn_ess=bl_mynn_ess,tke_budget=tke_budget,bl_mynn_diags=bl_mynn_diags,                             &
                 t_start_in=n_restart+1, restart_in=.true.,                                                             &
                 u=u1,v=v1,th=th1,qv=qv1,qc=qc1,qi=qi1,                                                                 &
                 rublten=ru1,rvblten=rv1,rthblten=rth1,                                                                 &
@@ -739,12 +750,12 @@ module module_bl_mynnedmf_tests
                 pblh=pblh1)
 
         !--- baseline: continuous run, t=2..nt ---
-        call mynnedmf_test(case=case,bl_mynn_closure=bl_mynn_closure,bl_mynn_cloudpdf=bl_mynn_cloudpdf,                     &
+        call mynnedmf_test(case=case,bl_mynn_closure=bl_mynn_closure,bl_mynn_cloudpdf=bl_mynn_cloudpdf,                &
                 bl_mynn_mixlength=bl_mynn_mixlength,bl_mynn_edmf=bl_mynn_edmf,bl_mynn_edmf_dd=bl_mynn_edmf_dd,         &
                 bl_mynn_edmf_mom=bl_mynn_edmf_mom,bl_mynn_edmf_tke=bl_mynn_edmf_tke,bl_mynn_cloudmix=bl_mynn_cloudmix, &
                 bl_mynn_mixqt=bl_mynn_mixqt,bl_mynn_mixscalars=bl_mynn_mixscalars,                                     &
                 bl_mynn_mixaerosols=bl_mynn_mixaerosols,bl_mynn_mixnumcon=bl_mynn_mixnumcon,                           &
-                bl_mynn_ess=bl_mynn_ess,tke_budget=tke_budget,                                                         &
+                bl_mynn_ess=bl_mynn_ess,tke_budget=tke_budget,bl_mynn_diags=bl_mynn_diags,                             &
                 restart_in=.false.,                                                                                    &
                 u=u_base,v=v_base,th=th_base,qv=qv_base,qc=qc_base,qi=qi_base,                                         &
                 qke=qke_base,pblh=pblh_base)
@@ -766,9 +777,9 @@ module module_bl_mynnedmf_tests
         print *, '  max|dqke| =', max_dqke
         print *, '  max|dpblh|=', max_dpblh
         if (test_pass) then
-                print *, '  RESULT: PASS (tol=', tol, ')'
+                print *, '  RESULT: Restart Test PASS (tol=', tol, ')'
         else
-                print *, '  RESULT: FAIL (tol=', tol, ')'
+                print *, '  RESULT: Restart Test FAIL (tol=', tol, ')'
                 stop 1
         end if
 

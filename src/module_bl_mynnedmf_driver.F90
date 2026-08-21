@@ -8,7 +8,8 @@
 !!    Nakanishi and Niino (2009) \cite NAKANISHI_2009
 !=================================================================================================================
  module module_bl_mynnedmf_driver
-  
+
+ use module_bl_mynnedmf_diags, only: cloud_water_path
  use module_bl_mynnedmf_common,only: kind_phys,xlvcp,xlscp
  use module_bl_mynnedmf,only: mynnedmf
 
@@ -110,7 +111,7 @@
                   pblh              , kpbl              , maxwidth           ,                      &
                   maxmf             , ztop_plume        , excess_h           , excess_q           , &
                   maxwidth_dd       , maxmf_dd          , maxtkeprod         , cldtop_cooling     , &
-                  ent_eff           ,                                                               &
+                  ent_eff           , lwp               , iwp                , swp                , &
                   !optional 3d output
                   edmf_a            , edmf_w            ,                                           &
                   edmf_qt           , edmf_thl          , edmf_ent           , edmf_qc            , &
@@ -124,6 +125,7 @@
                   bl_mynn_closure   , bl_mynn_edmf      , bl_mynn_edmf_mom   , bl_mynn_edmf_tke   , &
                   bl_mynn_output    , bl_mynn_mixscalars, bl_mynn_mixaerosols, bl_mynn_mixnumcon  , &
                   bl_mynn_cloudmix  , bl_mynn_mixqt     , bl_mynn_edmf_dd    , bl_mynn_ess        , &
+                  bl_mynn_diags     ,                                                               &
                   !smoke/dust
                   mix_chem          , nchem             , ndvel              , enh_mix            , &
                   chem3d            , settle3d          , vd3d               ,                      &
@@ -171,7 +173,8 @@
     bl_mynn_cloudmix,   &!
     bl_mynn_mixqt,      &!
     bl_mynn_ess,        &!
-    tke_budget    !
+    tke_budget,         &!
+    bl_mynn_diags
  
  integer,intent(in):: &
     initflag,           &!
@@ -277,6 +280,10 @@
     det_thl,     &!
     det_sqv       !
 
+ real(kind_phys),intent(inout),dimension(ims:ime,jms:jme),optional:: &
+    lwp,      &!
+    iwp,      &!
+    swp
 
 !--- output arguments:
  character(len=*),intent(out):: &
@@ -861,7 +868,23 @@
    deallocate(qshear1   )
    deallocate(qbuoy1    )
    deallocate(qdiss1    )
-endif
+ endif
+
+ !--- calculating MYNN-EDMF diagnostics:
+ if (debug) then
+    write(0,*)"bl_mynn_diags ", bl_mynn_diags
+    write(0,*)"In mynnedmf driver, just before call to bl_mynn_diags"
+ endif
+ 
+ if (bl_mynn_diags >= 1) then
+    call cloud_water_path (its, ite, kts, kte, jts, jte,               &
+                        ims, ime, kms, kme, jms, jme,                  &
+                        dz, qc, qi, qs, qc_bl, qi_bl, cldfra_bl,       &
+                        lwp, iwp, swp)
+    ! if (bl_mynn_diags >= 2) then
+
+    ! endif
+ endif 
 
  if (debug) then
    print*,"In mynnedmf_driver, at end"
