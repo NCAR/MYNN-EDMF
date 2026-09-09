@@ -8,7 +8,8 @@
 !!    Nakanishi and Niino (2009) \cite NAKANISHI_2009
 !=================================================================================================================
  module module_bl_mynnedmf_driver
-  
+
+ use module_bl_mynnedmf_diags, only: mynnedmf_diags
  use module_bl_mynnedmf_common,only: kind_phys,xlvcp,xlscp
  use module_bl_mynnedmf,only: mynnedmf
 
@@ -112,6 +113,10 @@
                   maxmf             , ztop_plume        , excess_h           , excess_q           , &
                   maxwidth_dd       , maxmf_dd          , maxtkeprod         , cldtop_cooling     , &
                   ent_eff           ,                                                               &
+                  !optional 2d diagnostic output
+                  lwp               , iwp               , swp                , wspd10             , &
+                  wspd80            , wspd160           , cldceil            , maxcldfra          , &
+                  maxcldfra_pbl     ,                                                               &
                   !optional 3d output
                   edmf_a            , edmf_w            ,                                           &
                   edmf_qt           , edmf_thl          , edmf_ent           , edmf_qc            , &
@@ -125,6 +130,7 @@
                   bl_mynn_closure   , bl_mynn_edmf      , bl_mynn_edmf_mom   , bl_mynn_edmf_tke   , &
                   bl_mynn_output    , bl_mynn_mixscalars, bl_mynn_mixaerosols, bl_mynn_mixnumcon  , &
                   bl_mynn_cloudmix  , bl_mynn_mixqt     , bl_mynn_edmf_dd    , bl_mynn_ess        , &
+                  bl_mynn_diags     ,                                                               &
                   !smoke/dust
                   mix_chem          , nchem             , ndvel              , enh_mix            , &
                   chem3d            , settle3d          , vd3d               ,                      &
@@ -172,7 +178,8 @@
     bl_mynn_cloudmix,   &!
     bl_mynn_mixqt,      &!
     bl_mynn_ess,        &!
-    tke_budget    !
+    tke_budget,         &!
+    bl_mynn_diags
  
  integer,intent(in):: &
     initflag,           &!
@@ -279,6 +286,17 @@
     det_thl,     &!
     det_sqv       !
 
+ real(kind_phys),intent(inout),dimension(ims:ime,jms:jme),optional:: &
+    lwp,      &!
+    iwp,      &!
+    swp,      &!
+    cldceil
+ real(kind_phys),intent(out),dimension(ims:ime,jms:jme),optional::   &
+    wspd10,      &!
+    wspd80,      &!
+    wspd160,     &!
+    maxcldfra,   &!
+    maxcldfra_pbl
 
 !--- output arguments:
  character(len=*),intent(out):: &
@@ -346,7 +364,9 @@
     wspd1,uoce1,voce1,znt1
 
  real(kind_phys),dimension(kts:kte):: &
-    dz1,u1,v1,th1,tk1,p1,exner1,rho1,qv1,rthraten1,delp1
+    dz1,u1,v1,th1,tk1,p1,exner1,rho1,qv1,rthraten1,delp1,zagl1
+
+ real(kind_phys),dimension(kts:kte+1):: zw1
 
  real(kind_phys),dimension(kts:kme):: &
     w1
@@ -358,7 +378,8 @@
     pattern_spp1
 
  real(kind_phys):: &
-    pblh1
+    pblh1, lwp1, iwp1, swp1, wspd101, wspd801, wspd1601, cldceil1,      &
+    maxcldfra1 , maxcldfra_pbl1
 
  real(kind_phys),dimension(kts:kte):: &
     cldfra_bl1,qc_bl1,qi_bl1,el_pbl1,qke1,qke_adv1,cov1,qsq1,tsq1,sh1,sm1
@@ -473,7 +494,9 @@
        !print*,"qfx at i=",i," j=",j,"is unrealistic:",qfx1
        qfx1 = -3e-4_kind_phys
     endif
-   
+
+    zw1(kts)        = zero
+    zagl1(kts)      = zero
     do k = kts,kte
        dz1(k)       = dz(i,k,j)
        u1(k)        = u(i,k,j)
@@ -486,6 +509,8 @@
        rho1(k)      = rho(i,k,j)
        rthraten1(k) = rthraten(i,k,j)
        delp1(k)     = max(0.01_kind_phys, pint(i,k,j)-pint(i,k+1,j))
+       zagl1(k)     = zw1(k) + 0.5_kind_phys * dz1(k)                   ! at mass point AGL
+       zw1(k+1)     = zw1(k) + dz1(k)                                   ! at interface
     enddo
     w1(kte+1) = w(i,kte+1,j)
 
@@ -665,7 +690,7 @@
             sqc1            = sqc1          , sqi1        = sqi1          , sqs1        = sqs1         , &
             qnc1            = qnc1          , qni1        = qni1          , qnwfa1      = qnwfa1       , &
             qnifa1          = qnifa1        , qnbca1      = qnbca1        , ozone1      = qoz1         , &
-            delp1           = delp1         ,                                                            &
+            delp1           = delp1         , zw1         = zw1           , zagl1       = zagl1        , &
             pres1           = p1            , ex1         = exner1        , rho1        = rho1         , &
             tk1             = tk1           , xland       = xland1        , ts          = ts1          , &
             qsfc            = qsfc1         , ps          = ps1           , ust         = ust1         , &
@@ -868,6 +893,41 @@
     deallocate(chem1)
     deallocate(settle1)
 
+    !--- calculating MYNN-EDMF diagnostics:
+    if (debug) then
+       write(0,*)"bl_mynn_diags=", bl_mynn_diags
+       write(0,*)"In mynnedmf driver, just before call to mynnedmf_diags"
+    endif
+
+    if (bl_mynn_diags >= 1) then
+       call mynnedmf_diags (&
+               kts  = kts , kte    = kte    , delp1      = delp1     , dz1  =  dz1  , zw1 = zw1         ,&
+               zagl1=zagl1, u1     = u1     ,                                                            &
+               v1   = v1  , tk1    = tk1    , qc1        = qc1       , qi1  =  qi1                      ,&
+               qs1  = qs1 , qc_bl1 = qc_bl1 , qi_bl1     = qi_bl1    , cldfra_bl1 = cldfra_bl1          ,&        
+               rho1 = rho1, xland1 = xland1 , pblh1      = pblh1     ,                                   &
+               ! diagnostic outputs
+               lwp1     = lwp1   , iwp1    = iwp1   , swp1       = swp1      , cldceil1 = cldceil1      ,&
+               wspd101  = wspd101, wspd801 = wspd801, wspd1601   = wspd1601  , maxcldfra1 = maxcldfra1  ,&
+               maxcldfra_pbl1 = maxcldfra_pbl1      , bl_mynn_diags = bl_mynn_diags )
+
+       ! collect diagnostic output
+       lwp(i,j)     = lwp1
+       iwp(i,j)     = iwp1
+       swp(i,j)     = swp1
+       cldceil(i,j) = cldceil1
+
+       if (bl_mynn_diags >= 2) then
+          wspd10(i,j)  = wspd101
+          wspd80(i,j)  = wspd801
+          wspd160(i,j) = wspd1601
+
+          maxcldfra(i,j)     = maxcldfra1
+          maxcldfra_pbl(i,j) = maxcldfra_pbl1
+       endif
+
+    endif
+
  enddo !i
  enddo !j
 
@@ -877,7 +937,7 @@
    deallocate(qshear1   )
    deallocate(qbuoy1    )
    deallocate(qdiss1    )
-endif
+ endif
 
  if (debug) then
    print*,"In mynnedmf_driver, at end"

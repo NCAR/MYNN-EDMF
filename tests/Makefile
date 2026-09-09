@@ -16,8 +16,8 @@ FCFLAGS = --coverage -fprofile-arcs -ftest-coverage \
           -I$(NFHOME)/include
 LDFLAGS = -L$(NFHOME)/lib -lnetcdff -lnetcdf -fsanitize=address
 
-SRC = module_model_constants.F90 ccpp_kind_types.F90 ../src/WRF/module_bl_mynnedmf_common.F90 ../src/module_bl_mynnedmf.F90 ../src/module_bl_mynnedmf_driver.F90 module_bl_mynnedmf_tests.F90 driver.F90
-OBJ = module_model_constants.o ccpp_kind_types.o module_bl_mynnedmf_common.o module_bl_mynnedmf.o module_bl_mynnedmf_driver.o module_bl_mynnedmf_tests.o driver.o
+SRC = module_model_constants.F90 ccpp_kind_types.F90 ../src/WRF/module_bl_mynnedmf_common.F90 ../src/module_bl_mynnedmf.F90 ../src/module_bl_mynnedmf_diags.F90 ../src/module_bl_mynnedmf_driver.F90 module_bl_mynnedmf_tests.F90 driver.F90
+OBJ = module_model_constants.o ccpp_kind_types.o module_bl_mynnedmf_common.o module_bl_mynnedmf.o module_bl_mynnedmf_diags.o module_bl_mynnedmf_driver.o module_bl_mynnedmf_tests.o driver.o
 
 %.o: %.F90
 	$(FC) $(FCFLAGS) -c $(SRC) -lgcov
