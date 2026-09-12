@@ -1231,35 +1231,23 @@
 !--- local variables:
  integer:: k
  integer,parameter::kts=1
+ real(kind_phys),dimension(kte) :: dry_scale
 !-----------------------------------------------------------------------------------------------------------------
 
 !--- initialization:
- do k = kts,kte
-    qc(k) = zero
-    qi(k) = zero
- enddo
+ qc = zero
+ qi = zero
+ qs = zero
 
-!--- conversion from water vapor mixing ratio to specific humidity:
- do k = kts,kte
-    qv(k) = max(1e-10_kind_phys, sqv(k)/(one-sqv(k)))
- enddo
+!--- conversion from specific humidity to water vapor mixing ratio:
+ dry_scale = one/(one-sqv)
 
-!--- conversion from cloud liquid water,cloud ice,and snow mixing ratios to specific contents:
- if(f_qc) then
-    do k = kts,kte
-       qc(k) = sqc(k)/(one-sqv(k))
-    enddo
- endif
- if(f_qi) then
-    do k = kts,kte
-       qi(k) = sqi(k)/(one-sqv(k))
-    enddo
- endif
- if(f_qs) then
-    do k = kts,kte
-       qs(k) = sqs(k)/(one-sqv(k))
-    enddo
- endif
+ qv = max(1e-10_kind_phys, sqv*dry_scale)
+
+ !--- conversion from specific contents to cloud liquid water,cloud ice,and snow mixing ratios
+ if (f_qc) qc = sqc*dry_scale
+ if (f_qi) qi = sqi*dry_scale
+ if (f_qs) qs = sqs*dry_scale
 
 !--- output error flag and message:
  errflg = 0
