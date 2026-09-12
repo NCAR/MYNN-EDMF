@@ -96,7 +96,8 @@
                   dz                , u                 , v                  , w                  , &
                   th                , tk                , p                  , exner              , &
                   rho               , qv                , qc                 , qi                 , &
-                  qs                , qnc               , qni                , qnifa              , &
+                  qs                , sqv               , sqc                , sqi                , &
+                  sqs               , qnc               , qni                , qnifa              , &
                   qnwfa             , qnbca             , qoz                , rthraten           , &
                   pint              ,                                                               &
                   !3d output
@@ -217,13 +218,17 @@
     pint,        &!
     exner,       &!
     rho,         &!
-    qv,          &!
     rthraten      !
 
  real(kind_phys),intent(in),dimension(ims:ime,kms:kme,jms:jme),optional:: &
+    qv,          &!
     qc,          &!
     qi,          &!
     qs,          &!
+    sqv,         &!
+    sqc,         &!
+    sqi,         &!
+    sqs,         &!
     qoz,         &!
     qnc,         &!
     qni,         &!
@@ -335,9 +340,9 @@
  integer::nchem1,ndvel1
  logical,intent(in),optional:: enh_mix
  logical::enh_mix1 
-! real(kind_phys),intent(in),dimension(ims:ime,jms:jme),optional:: frp_mean,emis_ant_no
-! real(kind_phys),intent(in),dimension(ims:ime,jms:jme,ndvel),optional:: vd3d
-! real(kind_phys),intent(inout),dimension(ims:ime,kms:kme,jms:jme,nchem),optional:: chem3d,settle3d
+ ! real(kind_phys),intent(in),dimension(ims:ime,jms:jme),optional:: frp_mean,emis_ant_no
+ ! real(kind_phys),intent(in),dimension(ims:ime,jms:jme,ndvel),optional:: vd3d
+ ! real(kind_phys),intent(inout),dimension(ims:ime,kms:kme,jms:jme,nchem),optional:: chem3d,settle3d
  real(kind_phys),intent(in),dimension(:,:),  optional:: frp_mean,emis_ant_no
  real(kind_phys),intent(in),dimension(:,:,:),optional:: vd3d
  real(kind_phys),intent(inout),dimension(:,:,:,:),optional:: chem3d,settle3d
@@ -517,11 +522,57 @@
     !--- input arguments for cloud mixing ratios and number concentrations; input argument
     !    for the ozone mixing ratio; input arguments for aerosols from the aerosol-aware
     !    Thompson cloud microphysics:
+
+    if (dry_mixing_ratio) then
+       do k = kts,kte
+          qv1(k)    = max(1e-10_kind_phys, qv(i,k,j))
+          qc1(k)    = zero
+          qi1(k)    = zero
+          qs1(k)    = zero
+       enddo
+
+       if(f_qc .and. present(qc)) then
+          do k = kts,kte
+             qc1(k) = qc(i,k,j)
+          enddo
+       endif
+       if(f_qi .and. present(qi)) then
+          do k = kts,kte
+             qi1(k) = qi(i,k,j)
+          enddo
+       endif
+       if(f_qs .and. present(qs)) then
+          do k = kts,kte
+             qs1(k) = qs(i,k,j)
+          enddo
+       endif
+
+    else
+       do k = kts,kte
+          sqv1(k)    = max(1e-10_kind_phys, sqv(i,k,j))
+          sqc1(k)    = zero
+          sqi1(k)    = zero
+          sqs1(k)    = zero
+       enddo
+
+       if(f_qc .and. present(sqc)) then
+          do k = kts,kte
+             sqc1(k) = sqc(i,k,j)
+          enddo
+       endif
+       if(f_qi .and. present(sqi)) then
+          do k = kts,kte
+             sqi1(k) = sqi(i,k,j)
+          enddo
+       endif
+       if(f_qs .and. present(sqs)) then
+          do k = kts,kte
+             sqs1(k) = sqs(i,k,j)
+          enddo
+       endif
+    end if
+
     do k = kts,kte
-       qv1(k)    = max(1e-10_kind_phys, qv(i,k,j))
-       qc1(k)    = zero
-       qi1(k)    = zero
-       qs1(k)    = zero
        qoz1(k)   = zero
        qnc1(k)   = zero
        qni1(k)   = zero
@@ -529,21 +580,7 @@
        qnwfa1(k) = zero
        qnbca1(k) = zero
     enddo
-    if(f_qc .and. present(qc)) then
-       do k = kts,kte
-          qc1(k) = qc(i,k,j)
-       enddo
-    endif
-    if(f_qi .and. present(qi)) then
-       do k = kts,kte
-          qi1(k) = qi(i,k,j)
-       enddo
-    endif
-    if(f_qs .and. present(qs)) then
-       do k = kts,kte
-          qs1(k) = qs(i,k,j)
-       enddo
-    endif
+
     if(f_qnc .and. present(qnc)) then
        do k = kts,kte
           qnc1(k) = qnc(i,k,j)
@@ -600,6 +637,9 @@
     if (dry_mixing_ratio) then
        call mynnedmf_pre_run(kte,f_qc,f_qi,f_qs,qv1,qc1,qi1,qs1,sqv1,sqc1, &
                             sqi1,sqs1,errmsg,errflg)
+    else
+       call mynnedmf_moisture_conversion(kte,f_qc,f_qi,f_qs,qv1,qc1,qi1,   &
+                            qs1,sqv1,sqc1,sqi1,sqs1,errmsg,errflg)
     endif
 
     !--- initialization of the stochastic forcing in the PBL:
@@ -1149,6 +1189,83 @@
  errmsg = " "
 
  end subroutine mynnedmf_pre_run
+!=================================================================================================================
+
+!=================================================================================================================
+!>\section arg_table_mynnedmf_moisture_conversion
+!!\html\include mynnedmf_moisture_conversion.html
+!!
+ subroutine mynnedmf_moisture_conversion(kte,f_qc,f_qi,f_qs,qv,qc,qi,qs,sqv,sqc,sqi,sqs,errmsg,errflg)
+!=================================================================================================================
+ use module_bl_mynnedmf_common,only: kind_phys,zero,one
+
+!--- input arguments:
+ logical,intent(in):: &
+    f_qc,      &! if true,the physics package includes the cloud liquid water mixing ratio.
+    f_qi,      &! if true,the physics package includes the cloud ice mixing ratio.
+    f_qs        ! if true,the physics package includes the snow mixing ratio.
+
+ integer,intent(in):: kte
+
+ real(kind_phys),intent(out),dimension(1:kte):: &
+    qv,        &!
+    qc,        &!
+    qi,        &!
+    qs          !
+
+
+!--- output arguments:
+ character(len=*),intent(out):: &
+    errmsg      ! output error message (-).
+
+ integer,intent(out):: &
+    errflg      ! output error flag (-).
+
+ real(kind_phys),intent(in),dimension(1:kte):: &
+    sqv,       &!
+    sqc,       &!
+    sqi,       &!
+    sqs         !
+
+
+!--- local variables:
+ integer:: k
+ integer,parameter::kts=1
+!-----------------------------------------------------------------------------------------------------------------
+
+!--- initialization:
+ do k = kts,kte
+    qc(k) = zero
+    qi(k) = zero
+ enddo
+
+!--- conversion from water vapor mixing ratio to specific humidity:
+ do k = kts,kte
+    qv(k) = max(1e-10_kind_phys, sqv(k)/(one-sqv(k)))
+ enddo
+
+!--- conversion from cloud liquid water,cloud ice,and snow mixing ratios to specific contents:
+ if(f_qc) then
+    do k = kts,kte
+       qc(k) = sqc(k)/(one-sqv(k))
+    enddo
+ endif
+ if(f_qi) then
+    do k = kts,kte
+       qi(k) = sqi(k)/(one-sqv(k))
+    enddo
+ endif
+ if(f_qs) then
+    do k = kts,kte
+       qs(k) = sqs(k)/(one-sqv(k))
+    enddo
+ endif
+
+!--- output error flag and message:
+ errflg = 0
+ errmsg = " "
+
+ end subroutine mynnedmf_moisture_conversion
 !=================================================================================================================
 
 !=================================================================================================================
