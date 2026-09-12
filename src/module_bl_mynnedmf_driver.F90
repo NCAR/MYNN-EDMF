@@ -9,7 +9,7 @@
 !=================================================================================================================
  module module_bl_mynnedmf_driver
 
- use module_bl_mynnedmf_diags, only: mynnedmf_diags
+ use module_bl_mynnedmf_diags, only: mynnedmf_diags2d
  use module_bl_mynnedmf_common,only: kind_phys,xlvcp,xlscp
  use module_bl_mynnedmf,only: mynnedmf
 
@@ -129,9 +129,9 @@
                   spp_pbl           , pattern_spp       ,                                           &
                   bl_mynn_tkeadvect , tke_budget        , bl_mynn_cloudpdf   , bl_mynn_mixlength  , &
                   bl_mynn_closure   , bl_mynn_edmf      , bl_mynn_edmf_mom   , bl_mynn_edmf_tke   , &
-                  bl_mynn_output    , bl_mynn_mixscalars, bl_mynn_mixaerosols, bl_mynn_mixnumcon  , &
+                  bl_mynn_mixscalars, bl_mynn_mixaerosols, bl_mynn_mixnumcon ,                      &
                   bl_mynn_cloudmix  , bl_mynn_mixqt     , bl_mynn_edmf_dd    , bl_mynn_ess        , &
-                  bl_mynn_diags     ,                                                               &
+                  bl_mynn_diags2d   , bl_mynn_diags3d   ,                                           &
                   !smoke/dust
                   mix_chem          , nchem             , ndvel              , enh_mix            , &
                   chem3d            , settle3d          , vd3d               ,                      &
@@ -172,7 +172,6 @@
     bl_mynn_edmf_dd,    &!
     bl_mynn_edmf_mom,   &!
     bl_mynn_edmf_tke,   &!
-    bl_mynn_output,     &!
     bl_mynn_mixscalars, &!
     bl_mynn_mixaerosols,&!
     bl_mynn_mixnumcon,  &!
@@ -180,8 +179,9 @@
     bl_mynn_mixqt,      &!
     bl_mynn_ess,        &!
     tke_budget,         &!
-    bl_mynn_diags
- 
+    bl_mynn_diags2d,    &!
+    bl_mynn_diags3d
+
  integer,intent(in):: &
     initflag,           &!
     spp_pbl              !
@@ -776,7 +776,7 @@
             bl_mynn_mixscalars = bl_mynn_mixscalars   , &
             bl_mynn_mixaerosols= bl_mynn_mixaerosols  , &
             bl_mynn_mixnumcon  = bl_mynn_mixnumcon    , &
-            bl_mynn_output     = bl_mynn_output       , &
+            bl_mynn_diags3d    = bl_mynn_diags3d      , &
             bl_mynn_cloudmix   = bl_mynn_cloudmix     , &
             bl_mynn_mixqt      = bl_mynn_mixqt        , &
             bl_mynn_ess        = bl_mynn_ess          , &
@@ -882,7 +882,7 @@
        enddo
     endif
 
-    if (bl_mynn_output > 0) then
+    if (bl_mynn_diags3d > 0) then
       do k = kts,kte
          edmf_a(i,k,j)   = edmf_a1(k)
          edmf_w(i,k,j)   = edmf_w1(k)
@@ -935,12 +935,12 @@
 
     !--- calculating MYNN-EDMF diagnostics:
     if (debug) then
-       write(0,*)"bl_mynn_diags=", bl_mynn_diags
-       write(0,*)"In mynnedmf driver, just before call to mynnedmf_diags"
+       write(0,*)"bl_mynn_diags2d=", bl_mynn_diags2d
+       write(0,*)"In mynnedmf driver, just before call to mynnedmf_diags2d"
     endif
 
-    if (bl_mynn_diags >= 1) then
-       call mynnedmf_diags (&
+    if (bl_mynn_diags2d >= 1) then
+       call mynnedmf_diags2d (&
                kts  = kts , kte    = kte    , delp1      = delp1     , dz1  =  dz1  , zw1 = zw1         ,&
                zagl1=zagl1, u1     = u1     ,                                                            &
                v1   = v1  , tk1    = tk1    , qc1        = qc1       , qi1  =  qi1                      ,&
@@ -949,7 +949,7 @@
                ! diagnostic outputs
                lwp1     = lwp1   , iwp1    = iwp1   , swp1       = swp1      , cldceil1 = cldceil1      ,&
                wspd101  = wspd101, wspd801 = wspd801, wspd1601   = wspd1601  , maxcldfra1 = maxcldfra1  ,&
-               maxcldfra_pbl1 = maxcldfra_pbl1      , bl_mynn_diags = bl_mynn_diags )
+               maxcldfra_pbl1 = maxcldfra_pbl1      , bl_mynn_diags2d = bl_mynn_diags2d )
 
        ! collect diagnostic output
        lwp(i,j)     = lwp1
@@ -957,7 +957,7 @@
        swp(i,j)     = swp1
        cldceil(i,j) = cldceil1
 
-       if (bl_mynn_diags >= 2) then
+       if (bl_mynn_diags2d >= 2) then
           wspd10(i,j)  = wspd101
           wspd80(i,j)  = wspd801
           wspd160(i,j) = wspd1601

@@ -12,15 +12,15 @@ module module_bl_mynnedmf_diags
 !===================================================================
 ! Subroutine to call MYNN-EDMF diagnostics
 !===================================================================
-  subroutine mynnedmf_diags (&
+  subroutine mynnedmf_diags2d (&
                 kts     , kte    , delp1     , dz1 , zw1   , zagl1, u1  , v1  , tk1 , qc1 , qi1 , qs1,&
                 qc_bl1  , qi_bl1 , cldfra_bl1, rho1, xland1, pblh1, lwp1, iwp1, swp1, cldceil1       ,&
-                wspd101 , wspd801, wspd1601  , maxcldfra1  , maxcldfra_pbl1   , bl_mynn_diags  )
+                wspd101 , wspd801, wspd1601  , maxcldfra1  , maxcldfra_pbl1   , bl_mynn_diags2d  )
 
     implicit none
 
     integer, intent(in) :: kts, kte
-    integer, intent(in) :: bl_mynn_diags
+    integer, intent(in) :: bl_mynn_diags2d
     real(kind_phys), intent(in) :: xland1, pblh1
     real(kind_phys), dimension(kts:kte), intent(in) :: delp1, dz1, zagl1, u1, v1, tk1, qc1, &
                        qi1, qs1, rho1
@@ -55,14 +55,14 @@ module module_bl_mynnedmf_diags
     call cloud_ceiling (kts, kte, dz1, zagl1, zw1, tk1, qctotal1, qitotal1, qstotal1, &
           cldfra_bl1, rho1, xland1, cldceil1)
 
-    if (bl_mynn_diags >= 2) then
+    if (bl_mynn_diags2d >= 2) then
       call wspd_at_hgts (kts, kte, zagl1, u1, v1, wspd101, wspd801, wspd1601)
 
       maxcldfra1     = maxval(cldfra_bl1)
       maxcldfra_pbl1 = maxval(cldfra_bl1, mask=(zagl1 < (pblh1 + 1000._kind_phys)))
     endif
 
-  end subroutine mynnedmf_diags
+  end subroutine mynnedmf_diags2d
 
 !===================================================================
 ! Subroutine to calculate LWP, IWP, and SWP

@@ -203,7 +203,7 @@ contains
              bl_mynn_mixlength  , bl_mynn_closure   , bl_mynn_ess       , &
              bl_mynn_edmf       , bl_mynn_edmf_mom  , bl_mynn_edmf_tke  , &
              bl_mynn_mixscalars , bl_mynn_mixaerosols,bl_mynn_mixnumcon , &
-             bl_mynn_output     , bl_mynn_cloudmix  , bl_mynn_mixqt     , &
+             bl_mynn_diags3d    , bl_mynn_cloudmix  , bl_mynn_mixqt     , &
              bl_mynn_edmf_dd    ,                                         &
              !3d emdf output
              edmf_a1            , edmf_w1           , edmf_qt1          , &
@@ -236,7 +236,7 @@ contains
  integer, intent(in) :: bl_mynn_mixscalars
  integer, intent(in) :: bl_mynn_mixaerosols
  integer, intent(in) :: bl_mynn_mixnumcon
- integer, intent(in) :: bl_mynn_output
+ integer, intent(in) :: bl_mynn_diags3d
  integer, intent(in) :: bl_mynn_cloudmix
  integer, intent(in) :: bl_mynn_mixqt
  integer, intent(in) :: bl_mynn_ess
@@ -1020,9 +1020,9 @@ contains
     endif
 
     !update updraft/downdraft properties
-    if (bl_mynn_output > 0) then !research mode == 1 or 2
+    if (bl_mynn_diags3d > 0) then !research mode == 1 or 2
        !if mode 2, then overwrite updrafts with downdrafts
-       if (bl_mynn_output == 2 .and. bl_mynn_edmf_dd == 1) then
+       if (bl_mynn_diags3d == 2 .and. bl_mynn_edmf_dd == 1) then
           edmf_a1(kts:kte)   =edmf_a_dd1(kts:kte)
           edmf_w1(kts:kte)   =edmf_w_dd1(kts:kte)
           edmf_qt1(kts:kte)  =edmf_qt_dd1(kts:kte)

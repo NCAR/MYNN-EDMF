@@ -11,7 +11,7 @@ module module_bl_mynnedmf_tests
     logical :: flag_iter,bl_mynn_tkeadvect,cycling
     integer :: initflag
     real,dimension(1) :: pattern_spp_pbl
-    integer :: bl_mynn_output,spp_pbl
+    integer :: bl_mynn_diags3d,spp_pbl
     logical :: &
       flag_qc,               &     ! if true,the physics package includes the cloud liquid water mixing ratio.
       flag_qi,               &     ! if true,the physics package includes the cloud ice mixing ratio.
@@ -43,7 +43,7 @@ module module_bl_mynnedmf_tests
        flag_qnwfa=.false.
        flag_qnbca=.false.
        bl_mynn_tkeadvect=.true.
-       bl_mynn_output=1                              
+       bl_mynn_diags3d=1                              
 
     end subroutine init_mynn_edmf_flags
 
@@ -51,7 +51,7 @@ module module_bl_mynnedmf_tests
     subroutine mynnedmf_test(case,bl_mynn_closure,bl_mynn_cloudpdf,bl_mynn_mixlength,      &
         bl_mynn_edmf,bl_mynn_edmf_dd,bl_mynn_edmf_mom,bl_mynn_edmf_tke,bl_mynn_cloudmix,   &
         bl_mynn_mixqt, bl_mynn_mixscalars, bl_mynn_mixaerosols,bl_mynn_mixnumcon,          &
-        bl_mynn_ess, tke_budget, bl_mynn_diags, mix_chem, enh_mix, restart_in,             &
+        bl_mynn_ess, tke_budget, bl_mynn_diags2d, mix_chem, enh_mix, restart_in,           &
         t_start_in, t_end_in, u, v, th, qv, qc, qi,                                        &
         rublten, rvblten, rthblten, rqvblten, rqcblten, rqiblten,                          &
         qc_bl, qi_bl, cldfra_bl, el_pbl, qke, qsq, tsq, cov,                               &
@@ -79,14 +79,14 @@ module module_bl_mynnedmf_tests
                  bl_mynn_edmf_tke,                              &
                  bl_mynn_cloudmix,                              &
                  bl_mynn_mixqt,                                 &
-                 bl_mynn_output,                                &
                  bl_mynn_mixscalars,                            &
                  bl_mynn_mixaerosols,                           &
                  bl_mynn_mixnumcon,                             &
                  bl_mynn_ess,                                   &
                  spp_pbl,                                       &
                  tke_budget,                                    &
-                 bl_mynn_diags
+                 bl_mynn_diags2d,                               &
+                 bl_mynn_diags3d
         real ::  bl_mynn_closure
         real :: delt,dxc
 
@@ -566,11 +566,11 @@ module module_bl_mynnedmf_tests
                   bl_mynn_cloudpdf     = bl_mynn_cloudpdf    , bl_mynn_mixlength   = bl_mynn_mixlength  , &
                   bl_mynn_closure      = bl_mynn_closure     , bl_mynn_edmf        = bl_mynn_edmf       , &
                   bl_mynn_edmf_mom     = bl_mynn_edmf_mom    , bl_mynn_edmf_tke    = bl_mynn_edmf_tke   , &
-                  bl_mynn_output       = bl_mynn_output      , bl_mynn_mixscalars  = bl_mynn_mixscalars , &
+                  bl_mynn_mixscalars   = bl_mynn_mixscalars  ,                                            &
                   bl_mynn_mixaerosols  = bl_mynn_mixaerosols , bl_mynn_mixnumcon   = bl_mynn_mixnumcon  , &
                   bl_mynn_cloudmix     = bl_mynn_cloudmix    , bl_mynn_mixqt       = bl_mynn_mixqt      , &
                   bl_mynn_edmf_dd      = bl_mynn_edmf_dd     , bl_mynn_ess         = bl_mynn_ess        , &
-                  bl_mynn_diags        = bl_mynn_diags       ,                                            &
+                  bl_mynn_diags2d      = bl_mynn_diags2d     , bl_mynn_diags3d     = bl_mynn_diags3d    , &
 !#if(WRF_CHEM == 1)
                   mix_chem=mix_chem     , chem3d=chem3d         , vd3d=vd3d     , nchem=nchem           , &
                   ndvel=ndvel           ,                                                                 &
@@ -580,7 +580,7 @@ module module_bl_mynnedmf_tests
                   errmsg=errmsg        , errflg=errflg                                                    &
                   )
              
-            if (case /= 'clr' .and. bl_mynn_diags >= 2) then
+            if (case /= 'clr' .and. bl_mynn_diags2d >= 2) then
                 print '(A, I4, 5(A, F8.3))', 't =', t, ' | U = ', u_loc(1, 1, 1), ' | LWP = ',            &
                         lwp(1, 1), ' | Ceiling = ', cldceil(1,1), ' | Maxcldfra = ', maxcldfra(1,1),      &
                         ' | Maxcldfra_pbl = ', maxcldfra_pbl(1,1)
@@ -722,7 +722,7 @@ module module_bl_mynnedmf_tests
                                 bl_mynn_edmf_tke,bl_mynn_cloudmix,                    &
                                 bl_mynn_mixqt, bl_mynn_mixscalars,                    &
                                 bl_mynn_mixaerosols,bl_mynn_mixnumcon,                &
-                                bl_mynn_ess,tke_budget,bl_mynn_diags,                 &
+                                bl_mynn_ess,tke_budget,bl_mynn_diags2d,                 &
                                 n_restart_in,tol_in)
 
         implicit none
@@ -731,7 +731,7 @@ module module_bl_mynnedmf_tests
                                         bl_mynn_edmf_dd, bl_mynn_edmf_mom, bl_mynn_edmf_tke, &
                                         bl_mynn_cloudmix, bl_mynn_mixqt, bl_mynn_mixscalars, &
                                         bl_mynn_mixaerosols, bl_mynn_mixnumcon, bl_mynn_ess, & 
-                                        tke_budget, bl_mynn_diags
+                                        tke_budget, bl_mynn_diags2d
         real, intent(in)             :: bl_mynn_closure
         integer, intent(in), optional :: n_restart_in
         real,    intent(in), optional :: tol_in
@@ -768,7 +768,7 @@ module module_bl_mynnedmf_tests
                 bl_mynn_edmf_mom=bl_mynn_edmf_mom,bl_mynn_edmf_tke=bl_mynn_edmf_tke,bl_mynn_cloudmix=bl_mynn_cloudmix, &
                 bl_mynn_mixqt=bl_mynn_mixqt,bl_mynn_mixscalars=bl_mynn_mixscalars,                                     &
                 bl_mynn_mixaerosols=bl_mynn_mixaerosols,bl_mynn_mixnumcon=bl_mynn_mixnumcon,                           &
-                bl_mynn_ess=bl_mynn_ess,tke_budget=tke_budget,bl_mynn_diags=bl_mynn_diags,                             &
+                bl_mynn_ess=bl_mynn_ess,tke_budget=tke_budget,bl_mynn_diags2d=bl_mynn_diags2d,                         &
                 t_end_in=n_restart,                                                                                    &
                 u=u1,v=v1,th=th1,qv=qv1,qc=qc1,qi=qi1,                                                                 &
                 rublten=ru1,rvblten=rv1,rthblten=rth1,                                                                 &
@@ -783,7 +783,7 @@ module module_bl_mynnedmf_tests
                 bl_mynn_edmf_mom=bl_mynn_edmf_mom,bl_mynn_edmf_tke=bl_mynn_edmf_tke,bl_mynn_cloudmix=bl_mynn_cloudmix, &
                 bl_mynn_mixqt=bl_mynn_mixqt,bl_mynn_mixscalars=bl_mynn_mixscalars,                                     &
                 bl_mynn_mixaerosols=bl_mynn_mixaerosols,bl_mynn_mixnumcon=bl_mynn_mixnumcon,                           &
-                bl_mynn_ess=bl_mynn_ess,tke_budget=tke_budget,bl_mynn_diags=bl_mynn_diags,                             &
+                bl_mynn_ess=bl_mynn_ess,tke_budget=tke_budget,bl_mynn_diags2d=bl_mynn_diags2d,                         &
                 t_start_in=n_restart+1, restart_in=.true.,                                                             &
                 u=u1,v=v1,th=th1,qv=qv1,qc=qc1,qi=qi1,                                                                 &
                 rublten=ru1,rvblten=rv1,rthblten=rth1,                                                                 &
@@ -799,7 +799,7 @@ module module_bl_mynnedmf_tests
                 bl_mynn_edmf_mom=bl_mynn_edmf_mom,bl_mynn_edmf_tke=bl_mynn_edmf_tke,bl_mynn_cloudmix=bl_mynn_cloudmix, &
                 bl_mynn_mixqt=bl_mynn_mixqt,bl_mynn_mixscalars=bl_mynn_mixscalars,                                     &
                 bl_mynn_mixaerosols=bl_mynn_mixaerosols,bl_mynn_mixnumcon=bl_mynn_mixnumcon,                           &
-                bl_mynn_ess=bl_mynn_ess,tke_budget=tke_budget,bl_mynn_diags=bl_mynn_diags,                             &
+                bl_mynn_ess=bl_mynn_ess,tke_budget=tke_budget,bl_mynn_diags2d=bl_mynn_diags2d,                         &
                 restart_in=.false.,                                                                                    &
                 u=u_base,v=v_base,th=th_base,qv=qv_base,qc=qc_base,qi=qi_base,                                         &
                 qke=qke_base,pblh=pblh_base)
