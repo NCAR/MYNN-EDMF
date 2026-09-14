@@ -638,8 +638,8 @@
        call mynnedmf_pre_run(kte,f_qc,f_qi,f_qs,qv1,qc1,qi1,qs1,sqv1,sqc1, &
                             sqi1,sqs1,errmsg,errflg)
     else
-       call mynnedmf_moisture_conversion(kte,f_qc,f_qi,f_qs,qv1,qc1,qi1,   &
-                            qs1,sqv1,sqc1,sqi1,sqs1,errmsg,errflg)
+       call mynnedmf_sqv_to_qv(kte,f_qc,f_qi,f_qs,qv1,qc1,qi1,qs1,sqv1,    &
+                            sqc1,sqi1,sqs1,errmsg,errflg)
     endif
 
     !--- initialization of the stochastic forcing in the PBL:
@@ -1192,10 +1192,10 @@
 !=================================================================================================================
 
 !=================================================================================================================
-!>\section arg_table_mynnedmf_moisture_conversion
-!!\html\include mynnedmf_moisture_conversion.html
+!>\section arg_table_mynnedmf_sqv_to_qv
+!!\html\include mynnedmf_sqv_to_qv.html
 !!
- subroutine mynnedmf_moisture_conversion(kte,f_qc,f_qi,f_qs,qv,qc,qi,qs,sqv,sqc,sqi,sqs,errmsg,errflg)
+ subroutine mynnedmf_sqv_to_qv(kte,f_qc,f_qi,f_qs,qv,qc,qi,qs,sqv,sqc,sqi,sqs,errmsg,errflg)
 !=================================================================================================================
  use module_bl_mynnedmf_common,only: kind_phys,zero,one
 
@@ -1253,7 +1253,7 @@
  errflg = 0
  errmsg = " "
 
- end subroutine mynnedmf_moisture_conversion
+ end subroutine mynnedmf_sqv_to_qv
 !=================================================================================================================
 
 !=================================================================================================================
