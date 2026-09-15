@@ -728,6 +728,8 @@
             znt             = znt1          , u1          = u1            , v1          = v1           , &
             w1              = w1            , th1         = th1           , sqv1        = sqv1         , &
             sqc1            = sqc1          , sqi1        = sqi1          , sqs1        = sqs1         , &
+            qv1             = qv1           , qc1         = qc1           , qi1         = qi1          , &
+            qs1             = qs1           ,                                                            &
             qnc1            = qnc1          , qni1        = qni1          , qnwfa1      = qnwfa1       , &
             qnifa1          = qnifa1        , qnbca1      = qnbca1        , ozone1      = qoz1         , &
             delp1           = delp1         , zw1         = zw1           , zagl1       = zagl1        , &

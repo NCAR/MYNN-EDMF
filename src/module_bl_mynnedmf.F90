@@ -160,7 +160,9 @@ contains
              !3d state variables
              u1                 , v1                , w1                , &
              th1                , sqv1              , sqc1              , &
-             sqi1               , sqs1              , qnc1              , &
+             sqi1               , sqs1              , qv1               , &
+             qc1                , qi1               , qs1               , &
+             qnc1               ,                                         &
              qni1               , qnwfa1            , qnifa1            , &
              qnbca1             , ozone1            , pres1             , &
              ex1                , rho1              , tk1               , &
@@ -280,7 +282,8 @@ contains
        dz1,u1,v1,w1,th1,pres1,ex1,delp1,zagl1,rho1,tk1,rthraten1
  real(kind_phys), dimension(kts:kte+1), intent(in)    ::  zw1         !interface
  real(kind_phys), dimension(kts:kte), intent(inout)   ::            &
-       sqv1,sqc1,sqi1,sqs1,qni1,qnc1,qnwfa1,qnifa1,qnbca1,ozone1,   &
+       sqv1,sqc1,sqi1,sqs1,qv1,qc1,qi1,qs1,                         &
+       qni1,qnc1,qnwfa1,qnifa1,qnbca1,ozone1,                       &
        qke1,tsq1,qsq1,cov1,qke_adv1,                                &
        sh1,sm1,el1,                                                 & !interface, but kte+1 not included
        du1,dv1,dth1,dqv1,dqc1,dqi1,dqs1,                            &
@@ -296,7 +299,7 @@ contains
  real(kind_phys), dimension(kts:kte)                  ::            &
        qc_bl1_old,qi_bl1_old,cldfra_bl1_old,dummy1,dummy2,          &
        diss_heat1,                                                  &
-       thl1,thv1,thlv1,qv1,qc1,qi1,qs1,sqw1,                        &
+       thl1,thv1,thlv1,sqw1,                                        &
        thl_tot1,qc_tot1,qi_tot1,                                    &
        dfm1, dfh1, dfq1, tcd1, qcd1,                                &
        pdk1, pdt1, pdq1, pdc1,                                      &
@@ -659,10 +662,6 @@ contains
     det_v1     =zero
 
     do k = kts,kte
-       qv1(k) = sqv1(k)/(one-sqv1(k))
-       qc1(k) = sqc1(k)/(one-sqv1(k))
-       qi1(k) = sqi1(k)/(one-sqv1(k))
-       qs1(k) = sqs1(k)/(one-sqv1(k))
        !keep snow out for now - increases ceiling bias
        sqw1(k)= sqv1(k)+sqc1(k)+sqi1(k)!+sqs1(k)
        thl1(k)= th1(k) - xlvcp/ex1(k)*sqc1(k) &
