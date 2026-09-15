@@ -11,22 +11,22 @@ implicit none
 call mynnedmf_test(case='clr',bl_mynn_closure=2.6,bl_mynn_cloudpdf=2,bl_mynn_mixlength=2,          &
       bl_mynn_edmf=1,bl_mynn_edmf_dd=1,bl_mynn_edmf_mom=1,bl_mynn_edmf_tke=1,bl_mynn_cloudmix=1,   &
       bl_mynn_mixqt=0,bl_mynn_mixscalars=0,bl_mynn_mixaerosols=0,bl_mynn_mixnumcon=0,bl_mynn_ess=1,&
-      tke_budget=1,bl_mynn_diags2d=0)
+      tke_budget=1,bl_mynn_diags2d=0,bl_mynn_diags3d=0)
 
 call mynnedmf_test(case='clr',bl_mynn_closure=3.0,bl_mynn_cloudpdf=2,bl_mynn_mixlength=2,          &
       bl_mynn_edmf=1,bl_mynn_edmf_dd=1,bl_mynn_edmf_mom=1,bl_mynn_edmf_tke=1,bl_mynn_cloudmix=1,   &
       bl_mynn_mixqt=0,bl_mynn_mixscalars=0,bl_mynn_mixaerosols=0,bl_mynn_mixnumcon=0,bl_mynn_ess=1,&
-      tke_budget=1,bl_mynn_diags2d=0,mix_chem=.true.,enh_mix=.true.)
+      tke_budget=1,bl_mynn_diags2d=0,bl_mynn_diags3d=1,mix_chem=.true.,enh_mix=.true.)
 
 call mynnedmf_test(case='marine_StCu',bl_mynn_closure=3.0,bl_mynn_cloudpdf=2,bl_mynn_mixlength=2,  &
       bl_mynn_edmf=1,bl_mynn_edmf_dd=1,bl_mynn_edmf_mom=1,bl_mynn_edmf_tke=1,bl_mynn_cloudmix=1,   &
       bl_mynn_mixqt=0,bl_mynn_mixscalars=0,bl_mynn_mixaerosols=0,bl_mynn_mixnumcon=0,bl_mynn_ess=1,&
-      tke_budget=1,bl_mynn_diags2d=2)
+      tke_budget=1,bl_mynn_diags2d=2,bl_mynn_diags3d=2)
 
 ! restart test
-call restart_test(case='clr',bl_mynn_closure=2.6,bl_mynn_cloudpdf=2,bl_mynn_mixlength=2, &
-     bl_mynn_edmf=1,bl_mynn_edmf_dd=1,bl_mynn_edmf_mom=1,bl_mynn_edmf_tke=1,bl_mynn_cloudmix=1, &
-     bl_mynn_mixqt=0,bl_mynn_mixscalars=0,bl_mynn_mixaerosols=0,bl_mynn_mixnumcon=0,bl_mynn_ess=1,&
-     tke_budget=1,bl_mynn_diags2d=0,n_restart_in=10,tol_in=1.0e-6)
+call restart_test(case='clr',bl_mynn_closure=2.6,bl_mynn_cloudpdf=2,bl_mynn_mixlength=2,           &
+     bl_mynn_edmf=1,bl_mynn_edmf_dd=1,bl_mynn_edmf_mom=1,bl_mynn_edmf_tke=1,bl_mynn_cloudmix=1,    &
+     bl_mynn_mixqt=0,bl_mynn_mixscalars=0,bl_mynn_mixaerosols=0,bl_mynn_mixnumcon=0,bl_mynn_ess=1, &
+     tke_budget=1,bl_mynn_diags2d=0,bl_mynn_diags3d=0,n_restart_in=10,tol_in=1.0e-6)
 
 end program driver
