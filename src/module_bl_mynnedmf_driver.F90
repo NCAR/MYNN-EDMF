@@ -533,17 +533,17 @@
 
        if(f_qc .and. present(qc)) then
           do k = kts,kte
-             qc1(k) = qc(i,k,j)
+             qc1(k) = max(1e-10_kind_phys, qc(i,k,j))
           enddo
        endif
        if(f_qi .and. present(qi)) then
           do k = kts,kte
-             qi1(k) = qi(i,k,j)
+             qi1(k) = max(1e-10_kind_phys, qi(i,k,j))
           enddo
        endif
        if(f_qs .and. present(qs)) then
           do k = kts,kte
-             qs1(k) = qs(i,k,j)
+             qs1(k) = max(1e-10_kind_phys, qs(i,k,j))
           enddo
        endif
 
@@ -1160,6 +1160,7 @@
  do k = kts,kte
     sqc(k) = zero
     sqi(k) = zero
+    sqs(k) = zero
  enddo
 
 !--- conversion from water vapor mixing ratio to specific humidity:
