@@ -624,10 +624,10 @@
        rqnbcablten1(k) = zero
     enddo
     
-    if (neg_moist_check .and. present(qi) .and. present(qc)) then
+    if (neg_moist_check .and. present(sqi) .and. present(sqc)) then
        !find/fix negative mixing ratios
        call moisture_check2(kte        , delt       , delp1      , exner1     , &
-                            qv1        , qc1        , qi1        , th1          )
+                            sqv1       , sqc1       , sqi1        , th1        )
        do k = kts,kte
           tk1(k)    = th1(k)*exner1(k)
        enddo
