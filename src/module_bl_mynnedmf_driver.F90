@@ -635,11 +635,11 @@
     
     !--- conversion from mixing ratios to specific contents:
     if (dry_mixing_ratio) then
-       call mynnedmf_pre_run(kte,f_qc,f_qi,f_qs,qv1,qc1,qi1,qs1,sqv1,sqc1, &
+       call mynnedmf_qv_to_sqv(kte,f_qc,f_qi,f_qs,qv1,qc1,qi1,qs1,sqv1,sqc1, &
                             sqi1,sqs1,errmsg,errflg)
     else
-       call mynnedmf_sqv_to_qv(kte,f_qc,f_qi,f_qs,qv1,qc1,qi1,qs1,sqv1,    &
-                            sqc1,sqi1,sqs1,errmsg,errflg)
+       call mynnedmf_sqv_to_qv(kte,f_qc,f_qi,f_qs,qv1,qc1,qi1,qs1,sqv1,sqc1, &
+                            sqi1,sqs1,errmsg,errflg)
     endif
 
     !--- initialization of the stochastic forcing in the PBL:
@@ -1115,10 +1115,10 @@
  end subroutine mynnedmf_pre_finalize
 
 !=================================================================================================================
-!>\section arg_table_mynnedmf_pre_run
-!!\html\include mynnedmf_pre_run.html
+!>\section arg_table_mynnedmf_qv_to_sqv
+!!\html\include mynnedmf_qv_to_sqv.html
 !!
- subroutine mynnedmf_pre_run(kte,f_qc,f_qi,f_qs,qv,qc,qi,qs,sqv,sqc,sqi,sqs,errmsg,errflg)
+ subroutine mynnedmf_qv_to_sqv(kte,f_qc,f_qi,f_qs,qv,qc,qi,qs,sqv,sqc,sqi,sqs,errmsg,errflg)
 !=================================================================================================================
  use module_bl_mynnedmf_common,only: kind_phys,zero,one
    
@@ -1188,7 +1188,7 @@
  errflg = 0
  errmsg = " "
 
- end subroutine mynnedmf_pre_run
+ end subroutine mynnedmf_qv_to_sqv
 !=================================================================================================================
 
 !=================================================================================================================
