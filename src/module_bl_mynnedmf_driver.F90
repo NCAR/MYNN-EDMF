@@ -9,7 +9,7 @@
 !=================================================================================================================
  module module_bl_mynnedmf_driver
 
- use module_bl_mynnedmf_diags, only: mynnedmf_diags
+ use module_bl_mynnedmf_diags, only: mynnedmf_diags2d
  use module_bl_mynnedmf_common,only: kind_phys,xlvcp,xlscp
  use module_bl_mynnedmf,only: mynnedmf
 
@@ -96,7 +96,8 @@
                   dz                , u                 , v                  , w                  , &
                   th                , tk                , p                  , exner              , &
                   rho               , qv                , qc                 , qi                 , &
-                  qs                , qnc               , qni                , qnifa              , &
+                  qs                , sqv               , sqc                , sqi                , &
+                  sqs               , qnc               , qni                , qnifa              , &
                   qnwfa             , qnbca             , qoz                , rthraten           , &
                   pint              ,                                                               &
                   !3d output
@@ -128,9 +129,9 @@
                   spp_pbl           , pattern_spp       ,                                           &
                   bl_mynn_tkeadvect , tke_budget        , bl_mynn_cloudpdf   , bl_mynn_mixlength  , &
                   bl_mynn_closure   , bl_mynn_edmf      , bl_mynn_edmf_mom   , bl_mynn_edmf_tke   , &
-                  bl_mynn_output    , bl_mynn_mixscalars, bl_mynn_mixaerosols, bl_mynn_mixnumcon  , &
+                  bl_mynn_mixscalars, bl_mynn_mixaerosols, bl_mynn_mixnumcon ,                      &
                   bl_mynn_cloudmix  , bl_mynn_mixqt     , bl_mynn_edmf_dd    , bl_mynn_ess        , &
-                  bl_mynn_diags     ,                                                               &
+                  bl_mynn_diags2d   , bl_mynn_diags3d   ,                                           &
                   !smoke/dust
                   mix_chem          , nchem             , ndvel              , enh_mix            , &
                   chem3d            , settle3d          , vd3d               ,                      &
@@ -171,7 +172,6 @@
     bl_mynn_edmf_dd,    &!
     bl_mynn_edmf_mom,   &!
     bl_mynn_edmf_tke,   &!
-    bl_mynn_output,     &!
     bl_mynn_mixscalars, &!
     bl_mynn_mixaerosols,&!
     bl_mynn_mixnumcon,  &!
@@ -179,8 +179,9 @@
     bl_mynn_mixqt,      &!
     bl_mynn_ess,        &!
     tke_budget,         &!
-    bl_mynn_diags
- 
+    bl_mynn_diags2d,    &!
+    bl_mynn_diags3d
+
  integer,intent(in):: &
     initflag,           &!
     spp_pbl              !
@@ -217,13 +218,17 @@
     pint,        &!
     exner,       &!
     rho,         &!
-    qv,          &!
     rthraten      !
 
  real(kind_phys),intent(in),dimension(ims:ime,kms:kme,jms:jme),optional:: &
+    qv,          &!
     qc,          &!
     qi,          &!
     qs,          &!
+    sqv,         &!
+    sqc,         &!
+    sqi,         &!
+    sqs,         &!
     qoz,         &!
     qnc,         &!
     qni,         &!
@@ -335,9 +340,9 @@
  integer::nchem1,ndvel1
  logical,intent(in),optional:: enh_mix
  logical::enh_mix1 
-! real(kind_phys),intent(in),dimension(ims:ime,jms:jme),optional:: frp_mean,emis_ant_no
-! real(kind_phys),intent(in),dimension(ims:ime,jms:jme,ndvel),optional:: vd3d
-! real(kind_phys),intent(inout),dimension(ims:ime,kms:kme,jms:jme,nchem),optional:: chem3d,settle3d
+ ! real(kind_phys),intent(in),dimension(ims:ime,jms:jme),optional:: frp_mean,emis_ant_no
+ ! real(kind_phys),intent(in),dimension(ims:ime,jms:jme,ndvel),optional:: vd3d
+ ! real(kind_phys),intent(inout),dimension(ims:ime,kms:kme,jms:jme,nchem),optional:: chem3d,settle3d
  real(kind_phys),intent(in),dimension(:,:),  optional:: frp_mean,emis_ant_no
  real(kind_phys),intent(in),dimension(:,:,:),optional:: vd3d
  real(kind_phys),intent(inout),dimension(:,:,:,:),optional:: chem3d,settle3d
@@ -517,11 +522,57 @@
     !--- input arguments for cloud mixing ratios and number concentrations; input argument
     !    for the ozone mixing ratio; input arguments for aerosols from the aerosol-aware
     !    Thompson cloud microphysics:
+
+    if (dry_mixing_ratio) then
+       do k = kts,kte
+          qv1(k)    = max(1e-10_kind_phys, qv(i,k,j))
+          qc1(k)    = zero
+          qi1(k)    = zero
+          qs1(k)    = zero
+       enddo
+
+       if(f_qc .and. present(qc)) then
+          do k = kts,kte
+             qc1(k) = max(1e-10_kind_phys, qc(i,k,j))
+          enddo
+       endif
+       if(f_qi .and. present(qi)) then
+          do k = kts,kte
+             qi1(k) = max(1e-10_kind_phys, qi(i,k,j))
+          enddo
+       endif
+       if(f_qs .and. present(qs)) then
+          do k = kts,kte
+             qs1(k) = max(1e-10_kind_phys, qs(i,k,j))
+          enddo
+       endif
+
+    else
+       do k = kts,kte
+          sqv1(k)    = max(1e-10_kind_phys, sqv(i,k,j))
+          sqc1(k)    = zero
+          sqi1(k)    = zero
+          sqs1(k)    = zero
+       enddo
+
+       if(f_qc .and. present(sqc)) then
+          do k = kts,kte
+             sqc1(k) = sqc(i,k,j)
+          enddo
+       endif
+       if(f_qi .and. present(sqi)) then
+          do k = kts,kte
+             sqi1(k) = sqi(i,k,j)
+          enddo
+       endif
+       if(f_qs .and. present(sqs)) then
+          do k = kts,kte
+             sqs1(k) = sqs(i,k,j)
+          enddo
+       endif
+    end if
+
     do k = kts,kte
-       qv1(k)    = max(1e-10_kind_phys, qv(i,k,j))
-       qc1(k)    = zero
-       qi1(k)    = zero
-       qs1(k)    = zero
        qoz1(k)   = zero
        qnc1(k)   = zero
        qni1(k)   = zero
@@ -529,21 +580,7 @@
        qnwfa1(k) = zero
        qnbca1(k) = zero
     enddo
-    if(f_qc .and. present(qc)) then
-       do k = kts,kte
-          qc1(k) = qc(i,k,j)
-       enddo
-    endif
-    if(f_qi .and. present(qi)) then
-       do k = kts,kte
-          qi1(k) = qi(i,k,j)
-       enddo
-    endif
-    if(f_qs .and. present(qs)) then
-       do k = kts,kte
-          qs1(k) = qs(i,k,j)
-       enddo
-    endif
+
     if(f_qnc .and. present(qnc)) then
        do k = kts,kte
           qnc1(k) = qnc(i,k,j)
@@ -587,10 +624,10 @@
        rqnbcablten1(k) = zero
     enddo
     
-    if (neg_moist_check .and. present(qi) .and. present(qc)) then
+    if (neg_moist_check .and. present(sqi) .and. present(sqc)) then
        !find/fix negative mixing ratios
        call moisture_check2(kte        , delt       , delp1      , exner1     , &
-                            qv1        , qc1        , qi1        , th1          )
+                            sqv1       , sqc1       , sqi1        , th1        )
        do k = kts,kte
           tk1(k)    = th1(k)*exner1(k)
        enddo
@@ -598,7 +635,10 @@
     
     !--- conversion from mixing ratios to specific contents:
     if (dry_mixing_ratio) then
-       call mynnedmf_pre_run(kte,f_qc,f_qi,f_qs,qv1,qc1,qi1,qs1,sqv1,sqc1, &
+       call mynnedmf_qv_to_sqv(kte,f_qc,f_qi,f_qs,qv1,qc1,qi1,qs1,sqv1,sqc1, &
+                            sqi1,sqs1,errmsg,errflg)
+    else
+       call mynnedmf_sqv_to_qv(kte,f_qc,f_qi,f_qs,qv1,qc1,qi1,qs1,sqv1,sqc1, &
                             sqi1,sqs1,errmsg,errflg)
     endif
 
@@ -688,6 +728,8 @@
             znt             = znt1          , u1          = u1            , v1          = v1           , &
             w1              = w1            , th1         = th1           , sqv1        = sqv1         , &
             sqc1            = sqc1          , sqi1        = sqi1          , sqs1        = sqs1         , &
+            qv1             = qv1           , qc1         = qc1           , qi1         = qi1          , &
+            qs1             = qs1           ,                                                            &
             qnc1            = qnc1          , qni1        = qni1          , qnwfa1      = qnwfa1       , &
             qnifa1          = qnifa1        , qnbca1      = qnbca1        , ozone1      = qoz1         , &
             delp1           = delp1         , zw1         = zw1           , zagl1       = zagl1        , &
@@ -736,7 +778,7 @@
             bl_mynn_mixscalars = bl_mynn_mixscalars   , &
             bl_mynn_mixaerosols= bl_mynn_mixaerosols  , &
             bl_mynn_mixnumcon  = bl_mynn_mixnumcon    , &
-            bl_mynn_output     = bl_mynn_output       , &
+            bl_mynn_diags3d    = bl_mynn_diags3d      , &
             bl_mynn_cloudmix   = bl_mynn_cloudmix     , &
             bl_mynn_mixqt      = bl_mynn_mixqt        , &
             bl_mynn_ess        = bl_mynn_ess          , &
@@ -842,7 +884,7 @@
        enddo
     endif
 
-    if (bl_mynn_output > 0) then
+    if (bl_mynn_diags3d > 0) then
       do k = kts,kte
          edmf_a(i,k,j)   = edmf_a1(k)
          edmf_w(i,k,j)   = edmf_w1(k)
@@ -895,12 +937,12 @@
 
     !--- calculating MYNN-EDMF diagnostics:
     if (debug) then
-       write(0,*)"bl_mynn_diags=", bl_mynn_diags
-       write(0,*)"In mynnedmf driver, just before call to mynnedmf_diags"
+       write(0,*)"bl_mynn_diags2d=", bl_mynn_diags2d
+       write(0,*)"In mynnedmf driver, just before call to mynnedmf_diags2d"
     endif
 
-    if (bl_mynn_diags >= 1) then
-       call mynnedmf_diags (&
+    if (bl_mynn_diags2d >= 1) then
+       call mynnedmf_diags2d (&
                kts  = kts , kte    = kte    , delp1      = delp1     , dz1  =  dz1  , zw1 = zw1         ,&
                zagl1=zagl1, u1     = u1     ,                                                            &
                v1   = v1  , tk1    = tk1    , qc1        = qc1       , qi1  =  qi1                      ,&
@@ -909,7 +951,7 @@
                ! diagnostic outputs
                lwp1     = lwp1   , iwp1    = iwp1   , swp1       = swp1      , cldceil1 = cldceil1      ,&
                wspd101  = wspd101, wspd801 = wspd801, wspd1601   = wspd1601  , maxcldfra1 = maxcldfra1  ,&
-               maxcldfra_pbl1 = maxcldfra_pbl1      , bl_mynn_diags = bl_mynn_diags )
+               maxcldfra_pbl1 = maxcldfra_pbl1      , bl_mynn_diags2d = bl_mynn_diags2d )
 
        ! collect diagnostic output
        lwp(i,j)     = lwp1
@@ -917,7 +959,7 @@
        swp(i,j)     = swp1
        cldceil(i,j) = cldceil1
 
-       if (bl_mynn_diags >= 2) then
+       if (bl_mynn_diags2d >= 2) then
           wspd10(i,j)  = wspd101
           wspd80(i,j)  = wspd801
           wspd160(i,j) = wspd1601
@@ -1075,10 +1117,10 @@
  end subroutine mynnedmf_pre_finalize
 
 !=================================================================================================================
-!>\section arg_table_mynnedmf_pre_run
-!!\html\include mynnedmf_pre_run.html
+!>\section arg_table_mynnedmf_qv_to_sqv
+!!\html\include mynnedmf_qv_to_sqv.html
 !!
- subroutine mynnedmf_pre_run(kte,f_qc,f_qi,f_qs,qv,qc,qi,qs,sqv,sqc,sqi,sqs,errmsg,errflg)
+ subroutine mynnedmf_qv_to_sqv(kte,f_qc,f_qi,f_qs,qv,qc,qi,qs,sqv,sqc,sqi,sqs,errmsg,errflg)
 !=================================================================================================================
  use module_bl_mynnedmf_common,only: kind_phys,zero,one
    
@@ -1120,6 +1162,7 @@
  do k = kts,kte
     sqc(k) = zero
     sqi(k) = zero
+    sqs(k) = zero
  enddo
 
 !--- conversion from water vapor mixing ratio to specific humidity:
@@ -1148,7 +1191,72 @@
  errflg = 0
  errmsg = " "
 
- end subroutine mynnedmf_pre_run
+ end subroutine mynnedmf_qv_to_sqv
+!=================================================================================================================
+
+!=================================================================================================================
+!>\section arg_table_mynnedmf_sqv_to_qv
+!!\html\include mynnedmf_sqv_to_qv.html
+!!
+ subroutine mynnedmf_sqv_to_qv(kte,f_qc,f_qi,f_qs,qv,qc,qi,qs,sqv,sqc,sqi,sqs,errmsg,errflg)
+!=================================================================================================================
+ use module_bl_mynnedmf_common,only: kind_phys,zero,one
+
+!--- input arguments:
+ logical,intent(in):: &
+    f_qc,      &! if true,the physics package includes the cloud liquid water mixing ratio.
+    f_qi,      &! if true,the physics package includes the cloud ice mixing ratio.
+    f_qs        ! if true,the physics package includes the snow mixing ratio.
+
+ integer,intent(in):: kte
+
+ real(kind_phys),intent(out),dimension(1:kte):: &
+    qv,        &!
+    qc,        &!
+    qi,        &!
+    qs          !
+
+
+!--- output arguments:
+ character(len=*),intent(out):: &
+    errmsg      ! output error message (-).
+
+ integer,intent(out):: &
+    errflg      ! output error flag (-).
+
+ real(kind_phys),intent(in),dimension(1:kte):: &
+    sqv,       &!
+    sqc,       &!
+    sqi,       &!
+    sqs         !
+
+
+!--- local variables:
+ integer:: k
+ integer,parameter::kts=1
+ real(kind_phys),dimension(kte) :: dry_scale
+!-----------------------------------------------------------------------------------------------------------------
+
+!--- initialization:
+ qc = zero
+ qi = zero
+ qs = zero
+
+!--- conversion from specific humidity to water vapor mixing ratio:
+ dry_scale = one/(one-sqv)
+
+ qv = max(1e-10_kind_phys, sqv*dry_scale)
+
+ !--- conversion from specific contents to cloud liquid water,cloud ice,and snow mixing ratios
+ if (f_qc) qc = sqc*dry_scale
+ if (f_qi) qi = sqi*dry_scale
+ if (f_qs) qs = sqs*dry_scale
+
+!--- output error flag and message:
+ errflg = 0
+ errmsg = " "
+
+ end subroutine mynnedmf_sqv_to_qv
 !=================================================================================================================
 
 !=================================================================================================================
