@@ -44,7 +44,7 @@
 ! real(kind_phys),parameter:: svp2               != 17.67 (dimensionless)
 ! real(kind_phys),parameter:: svp3               != 29.65 (K) 
  
-! Specified locally ore derived:
+! Specified locally or derived:
  real(kind_phys),parameter:: tref    = 300.0     !reference temperature (K)
  real(kind_phys),parameter:: TKmin   = 253.0     !for total water conversion, Tripoli and Cotton (1981)
  real(kind_phys),parameter:: tice    = 238.0     !-35 (C), temp at saturation w.r.t. ice

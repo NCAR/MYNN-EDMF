@@ -108,16 +108,16 @@
 ! *        A Description of the MYNN-EDMF Turbulence Scheme. NOAA Tech.*
 ! *        Memo. OAR GSL-77. 60 pp. https://doi.org/10.25923/rahr-sj70 *
 !***********************************************************************
-! notes on the versioning of the myhnn-edmf:
+! notes on the versioning of the mynn-edmf:
 !
 ! Version 1.0.0: Described by references 1-4 (above). Implemented into WRF
 !    WRFv3.0-v3.4.1 for HRRRv1/RAPv2.
 !
-! Version 2.0.0: Still best described by references 1-4 (above). Approximately pplies to
+! Version 2.0.0: Still best described by references 1-4 (above). Approximately applies to
 !    WRFv3.5-v3.6.1 and used in HRRRv2/RAPv3.
 !
 ! Version 3.0.0:  Still best described by references 1-4 (above), despite significant
-!    code departures from the original scheme. This version pproximately pplies to
+!    code departures from the original scheme. This version pproximately applies to
 !    WRFv3.7-3.9 and used for HRRRv3/RAPv4.
 !
 ! Version 4.0.0: Best described by reference 5 (above). Approximately applies to
@@ -356,7 +356,7 @@ contains
 !!Note that this change required further modification of other parameters
 !!above (c2, c3). If you want to remove this option, set c2 and c3 constants
 !!(above) back to NN2009 values (see commented out lines next to the
-!!parameters above). This only removes the negative TKE problem
+!!parameters set in module_bl_mynnedmf_common.F90). This only removes the negative TKE problem
 !!but does not necessarily improve performance - neutral impact. Also,
 !!it is a real variable because it is used within an equation to
 !!activate/deactive this option
@@ -406,7 +406,7 @@ contains
              print*," qv=",sqv1(k)," qc=",sqc1(k)
              print*," u*=",ust," wspd=",wspd
              print*," xland=",xland," ts=",ts
-             print*," ps=",ps,"delp1=",ps-pres1(kts)
+             print*," ps=",ps,"delp1=",delp1(kts)
              print*," znt=",znt," dx=",dx," dz(1)=",dz1(1)
           endif
        enddo
@@ -4065,16 +4065,6 @@ endif
     rhoz(kte+1)= rhoz(kte)
     khdz(kte+1)= rhoz(kte+1)*dfh(kte)
     kmdz(kte+1)= rhoz(kte+1)*dfm(kte)
-
-    !delta-p for the moisture check
-    !delp(kts)  = psfc - (p(kts+1)*dz(kts) + p(kts)*dz(kts+1))/(dz(kts)+dz(kts+1))
-!    DO k=kts,kte !kts+1,kte-1
-!       !delp(k)  = (p(k)*dz(k-1) + p(k-1)*dz(k))/(dz(k)+dz(k-1)) - &
-!       !           (p(k+1)*dz(k) + p(k)*dz(k+1))/(dz(k)+dz(k+1))
-!       delp(k) = rho(k)*grav*dz(k)
-!    ENDDO
-!    !delp(kte)  =delp(kte-1)
-!    if ( delp(kts) < p25*delp(kts+1) )delp(kts)=p25*delp(kts+1)
 
     !stability criteria for implicit mf
     if (bl_mynn_edmf == 1) then

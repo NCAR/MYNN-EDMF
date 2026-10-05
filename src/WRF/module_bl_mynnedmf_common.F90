@@ -44,7 +44,7 @@
 ! real(kind_phys),parameter:: svp2               != 17.67 (dimensionless)
 ! real(kind_phys),parameter:: svp3               != 29.65 (K) 
  
-! Specified locally ore derived:
+! Specified locally or derived:
  real(kind_phys),parameter:: grav    = g
  real(kind_phys),parameter:: t0c     = svpt0
  real(kind_phys),parameter:: tref    = 300.0     !reference temperature (K)
