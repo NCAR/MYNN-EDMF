@@ -177,11 +177,12 @@ module module_bl_mynnedmf_diags
     cld_depth  = zero
 
     do k = kts, kte-1
-      ! temperature-dependent ice cloud effective radius (Mishara et al. 2014)
+      ! temperature-dependent ice cloud effective radius (Mishra et al. 2014)
       re_i = 173.46_kind_phys + 2.14_kind_phys * (tk1(k) - 273.15_kind_phys)
+      re_i = re_i * 1e-6 !convert microns to meters
 
       cldtau1= (1.5_kind_phys * qctotal1(k) * rho1(k) * dz1(k) / (rho_w * re_c)) +   &
-                (1.5_kind_phys * (qitotal1(k)+qstotal1(k)) * rho1(k) * dz1(k) / (rho_i *re_i))
+                (1.5_kind_phys * (qitotal1(k)+qstotal1(k)) * rho1(k) * dz1(k) / (rho_i * re_i))
       !print*, 'cldtau1', cldtau1, 'cldfra_bl1', cldfra_bl1(k), 'qctotal', qctotal
 
       if (cldtau1 > zero .and. cldfra_bl1(k) >= 0.5_kind_phys) then
