@@ -3958,7 +3958,7 @@ endif
 !-------------------------------------------------------------------
     use module_bl_mynnedmf_common, only: r_d,p608,grav,xlvcp,xlscp,       &
          wfa_max,wfa_min,ifa_max,ifa_min,wfa_ht,ifa_ht,zero,one,          &
-         p25,p333,p5,kind_phys
+         p25,p333,p5,p9,kind_phys
     
     integer, intent(in) :: kts,kte,i
 
@@ -4540,7 +4540,7 @@ IF (bl_mynn_mixqt == 0) THEN
    qvflux = flqv
    if (qvflux < zero) then
       !do not allow specified surface flux to reduce qv below 1e-8 kg/kg
-      qvflux = max(qvflux, (min(0.9*sqv(kts) - 1e-8, zero)/dtz(kts)))
+      qvflux = max(qvflux, min(1e-8_kind_phys - p9*sqv(kts), zero)/(dtz(kts)*rhosfc*rhoinv(kts)))
    endif
 
    if (bl_mynn_edmf > 1) then
