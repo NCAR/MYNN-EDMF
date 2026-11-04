@@ -4048,7 +4048,7 @@ endif
     
     !Prepare "constants" for diffusion equation.
     !khdz = rho*Kh/dz = rho*dfh
-    rhosfc     = psfc/(R_d*(tk(kts)+p608*qv(kts)))
+    rhosfc     = psfc/(R_d*tk(kts)*(one+p608*qv(kts)))
     dtz(kts)   = delt/dz(kts)
     rhoz(kts)  = rho(kts)
     rhoinv(kts)= one/rho(kts)
@@ -4211,7 +4211,7 @@ endif
     c(k)=  -dtz(k)*kmdz(k+1)*rhoinv(k)                            &
         &  - p5*dtz(k)*rhoinv(k)*s_aw1(k+1)*onoff                 &
         &  - p5*dtz(k)*rhoinv(k)*sd_aw1(k+1)*onoff
-    d(k)=v(k)  + dtz(k)*rhosfc*rhoinv(k)*voce*ust**2/wspd         &
+    d(k)=v(k)  + dtz(k)*rhosfc*rhoinv(k)*voce*ust*ustovwsp        &
         &  - dtz(k)*rhoinv(k)*s_awv1(k+1)*onoff                   &
         &  + dtz(k)*rhoinv(k)*sd_awv1(k+1)*onoff                  &
         &  + sub_v(k)*delt + det_v(k)*delt
