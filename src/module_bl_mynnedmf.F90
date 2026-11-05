@@ -2129,7 +2129,7 @@ contains
                       &       two*bbb*beta*(qtke(k)-zdo_sup))))/bbb/beta
                  else
                     if (theta(izz) .ne. theta(k)) then
-                       tl=(qtke(k)-zdo_sup)/(beta*(theta(izz)-theta(k)))
+                       tl=(qtke(k)-zdo_sup)/(beta*(theta(k)-theta(izz)))
                     else
                        tl=zero
                     endif
@@ -2285,7 +2285,7 @@ contains
                       &       two*bbb*beta*(qtke(iz)-zdo_sup))))/bbb/beta
                  else
                     if (theta(izz) .ne. theta(iz)) then
-                       tl=(qtke(iz)-zdo_sup)/(beta*(theta(izz)-theta(iz)))
+                       tl=(qtke(iz)-zdo_sup)/(beta*(theta(iz)-theta(izz)))
                     else
                        tl=zero
                     endif
