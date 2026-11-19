@@ -274,6 +274,7 @@ contains
  integer,         intent(inout) :: kpbl
 !local
  real(kind_phys) :: psig_bl,psig_shcu,rmol,rmolh
+ real(kind_phys) :: qflx_up,qflx_dn
  integer :: imd,jmd
  integer :: k,kproblem
 
@@ -851,6 +852,29 @@ contains
             &cldfra_bl1,qc_bl1,qi_bl1,rthraten1,      &
             &tkeprod_dn,psig_bl,                      &
             maxtkeprod,cldtop_cooling,ent_eff         )
+    endif
+
+    !The plume vapour fluxes leave out the plume condensate, which the qc
+    !and qi solves carry. If a condensate is not mixed (bl_mynn_cloudmix = 0,
+    !or FLAG_QC/FLAG_QI false), nothing carries it, while the theta_l flux
+    !still carries its latent term. Give it to the vapour instead, so each
+    !face passes the plume's total water along with its theta_l.
+    if (bl_mynn_mixqt == 0 .and. (bl_mynn_cloudmix == 0 .or. &
+        .not. FLAG_QC .or. .not. FLAG_QI)) then
+       do k=kts,kte
+          qflx_up = s_awqt1(k)
+          qflx_dn = sd_awqt1(k)
+          if (bl_mynn_cloudmix > 0 .and. FLAG_QC) then
+             qflx_up = qflx_up - s_awqc1(k)
+             qflx_dn = qflx_dn - sd_awqc1(k)
+          endif
+          if (bl_mynn_cloudmix > 0 .and. FLAG_QI) then
+             qflx_up = qflx_up - s_awqi1(k)
+             qflx_dn = qflx_dn - sd_awqi1(k)
+          endif
+          s_awqv1(k)  = max(zero, qflx_up)
+          sd_awqv1(k) = qflx_dn
+       enddo
     endif
 
     !Capability to substep the eddy-diffusivity portion
