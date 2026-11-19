@@ -7602,14 +7602,14 @@ real(kind_phys):: diff,exn,t,th,qs,qcold
   EXN=(P/p1000mb)**rcp
   QC=zero  !better first guess QC is incoming from lower level, do not set to zero
   do ni=1,NITER
-     T=EXN*THL + xlvcp/EXN*QC
+     T=EXN*THL + xlvcp*QC
      QS=qsat_blend(T,P)
      QCOLD=QC
      QC=p5*QC + p5*MAX((QT-QS),zero)
      if (abs(QC-QCOLD)<Diff) exit
   enddo
 
-  T=EXN*THL + xlvcp/EXN*QC
+  T=EXN*THL + xlvcp*QC
   QS=qsat_blend(T,P)
   QC=max(QT-QS,zero)
 
@@ -7666,7 +7666,7 @@ real(kind_phys):: diff,exn,t,th,qs,qx,qxold,frac_ice,frac_liq,thvin
 
   exn=(p/p1000mb)**rcp
   do ni=1,niter
-     t=exn*thl + xlvcp/exn*qc + xlscp/exn*qi
+     t=exn*thl + xlvcp*qc + xlscp*qi
      qs=qsat_blend(t,p)
      qxold=qc+qi
      qx=qc+qi
@@ -7676,7 +7676,7 @@ real(kind_phys):: diff,exn,t,th,qs,qx,qxold,frac_ice,frac_liq,thvin
      if (abs(qx-qxold)<diff) exit
   enddo
 
-  t=exn*thl + xlvcp/exn*qc + xlscp/exn*qi
+  t=exn*thl + xlvcp*qc + xlscp*qi
   qs=qsat_blend(t,p)
   qx=max(qt-qs,zero)
   qc=frac_liq*qx
