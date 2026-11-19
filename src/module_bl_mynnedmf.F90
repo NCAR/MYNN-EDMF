@@ -3120,14 +3120,14 @@ if (bl_mynn_edmf > 1) then
     b(1)=one + dtz(k)*kqdz(k+1)*rhoinv(k) + bp(k)*delt
     c(1)=    - dtz(k)*kqdz(k+1)*rhoinv(k)
     d(1)=max(qkemin, qke(k)) + rp(k)*delt                        &
-        &    - dtz(k)*(upcont(k+1)+dncont(k+1))
+        &    - dtz(k)*rhoinv(k)*(upcont(k+1)+dncont(k+1))
 
     DO k=kts+1,kte-1
        a(k)=   - dtz(k)*kqdz(k)*rhoinv(k)
        b(k)=one+ dtz(k)*(kqdz(k)+kqdz(k+1))*rhoinv(k) + bp(k)*delt
        c(k)=   - dtz(k)*kqdz(k+1)*rhoinv(k)
        d(k)=max(qkemin, qke(k)) + rp(k)*delt                     &
-          &    - dtz(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k))
+          &    - dtz(k)*rhoinv(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k))
     ENDDO
 
 else !implicit
@@ -3223,14 +3223,14 @@ if ( closure > 2.5 ) then
       b(1)=one + dtz(k)*kmdz(k+1)*rhoinv(k) + bp(k)*delt
       c(1)=    - dtz(k)*kmdz(k+1)*rhoinv(k)
       d(1)=max(zero, qsq(k)) + rp(k)*delt                        &
-          &    - dtz(k)*(upcont(k+1)+dncont(k+1))
+          &    - dtz(k)*rhoinv(k)*(upcont(k+1)+dncont(k+1))
 
       do k=kts+1,kte-1
          a(k)=   - dtz(k)*kmdz(k)*rhoinv(k)
          b(k)=one+ dtz(k)*(kmdz(k)+kmdz(k+1))*rhoinv(k) + bp(k)*delt
          c(k)=   - dtz(k)*kmdz(k+1)*rhoinv(k)
          d(k)=max(zero, qsq(k)) + rp(k)*delt                     &
-            &    - dtz(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k))
+            &    - dtz(k)*rhoinv(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k))
       enddo
        
    else !implicit
@@ -4100,13 +4100,13 @@ endif
     b(1)=one + dtz(k)*(kmdz(k+1) + rhosfc*ust*ustovwsp)*rhoinv(k) 
     c(1)=    - dtz(k)*kmdz(k+1)*rhoinv(k)
     d(1)=u(k)+ dtz(k)*uoce*ust*ustovwsp*rhosfc*rhoinv(k)               &
-             - dtz(k)*(upcont(k+1)+dncont(k+1))
+             - dtz(k)*rhoinv(k)*(upcont(k+1)+dncont(k+1))
 
     DO k=kts+1,kte-1
        a(k)=   - dtz(k)*kmdz(k)*rhoinv(k)
        b(k)=one+ dtz(k)*(kmdz(k)+kmdz(k+1))*rhoinv(k) 
        c(k)=   - dtz(k)*kmdz(k+1)*rhoinv(k)
-       d(k)=u(k) -dtz(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k)) &
+       d(k)=u(k) -dtz(k)*rhoinv(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k)) &
            &  + sub_u(k)*delt + det_u(k)*delt
     ENDDO
 
@@ -4190,13 +4190,13 @@ endif
     b(1)=one + dtz(k)*(kmdz(k+1)+rhosfc*ust*ustovwsp)*rhoinv(k)
     c(1)=    - dtz(k)*kmdz(k+1)*rhoinv(k)
     d(1)=v(k)+ dtz(k)*rhosfc*rhoinv(k)*voce*ust*ustovwsp               &
-             - dtz(k)*(upcont(k+1)+dncont(k+1))
+             - dtz(k)*rhoinv(k)*(upcont(k+1)+dncont(k+1))
 
     DO k=kts+1,kte-1
        a(k)=   - dtz(k)*kmdz(k)*rhoinv(k)
        b(k)=one+ dtz(k)*(kmdz(k)+kmdz(k+1))*rhoinv(k)
        c(k)=   - dtz(k)*kmdz(k+1)*rhoinv(k)
-       d(k)=v(k) -dtz(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k)) &
+       d(k)=v(k) -dtz(k)*rhoinv(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k)) &
            &  + sub_v(k)*delt + det_v(k)*delt
     ENDDO
 
@@ -4277,14 +4277,14 @@ endif
     b(1)=one + dtz(k)*khdz(k+1)*rhoinv(k)
     c(1)=    - dtz(k)*khdz(k+1)*rhoinv(k)
     d(1)=thl(k)+dtz(k)*rhosfc*flt*rhoinv(k) + tcd(k)*delt              &
-         - dtz(k)*(upcont(k+1)+dncont(k+1))                            &
+         - dtz(k)*rhoinv(k)*(upcont(k+1)+dncont(k+1))                            &
          + diss_heat(k)*delt + sub_thl(k)*delt + det_thl(k)*delt
 
     DO k=kts+1,kte-1
        a(k)=   - dtz(k)*khdz(k)*rhoinv(k)
        b(k)=one+ dtz(k)*(khdz(k)+khdz(k+1))*rhoinv(k)
        c(k)=   - dtz(k)*khdz(k+1)*rhoinv(k)
-       d(k)=thl(k)-dtz(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k)) &
+       d(k)=thl(k)-dtz(k)*rhoinv(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k)) &
            &  + diss_heat(k)*delt + sub_thl(k)*delt + det_thl(k)*delt
     ENDDO
 
@@ -4374,14 +4374,14 @@ IF (bl_mynn_mixqt > 0) THEN
     b(1)=one + dtz(k)*khdz(k+1)*rhoinv(k)
     c(1)=    - dtz(k)*khdz(k+1)*rhoinv(k)
     d(1)=sqw(k)+dtz(k)*rhosfc*flq*rhoinv(k) + qcd(k)*delt              &
-         - dtz(k)*(upcont(k+1)+dncont(k+1))                            &
+         - dtz(k)*rhoinv(k)*(upcont(k+1)+dncont(k+1))                            &
          + sub_sqv(k)*delt + det_sqv(k)*delt
 
     DO k=kts+1,kte-1
        a(k)=   - dtz(k)*khdz(k)*rhoinv(k)
        b(k)=one+ dtz(k)*(khdz(k)+khdz(k+1))*rhoinv(k)
        c(k)=   - dtz(k)*khdz(k+1)*rhoinv(k)
-       d(k)=sqw(k)-dtz(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k)) &
+       d(k)=sqw(k)-dtz(k)*rhoinv(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k)) &
            &  + sub_sqv(k)*delt + det_sqv(k)*delt
     ENDDO
 
@@ -4466,14 +4466,14 @@ IF (bl_mynn_mixqt == 0) THEN
       b(1)=one + dtz(k)*khdz(k+1)*rhoinv(k)
       c(1)=    - dtz(k)*khdz(k+1)*rhoinv(k)
       d(1)=sqc(k)+dtz(k)*rhosfc*flqc*rhoinv(k) + qcd(k)*delt             &
-          &    - dtz(k)*(upcont(k+1)+dncont(k+1))                        &
+          &    - dtz(k)*rhoinv(k)*(upcont(k+1)+dncont(k+1))                        &
           &    + det_sqc(k)*delt
     
       DO k=kts+1,kte-1
          a(k)=   - dtz(k)*khdz(k)*rhoinv(k)
          b(k)=one+ dtz(k)*(khdz(k)+khdz(k+1))*rhoinv(k)
          c(k)=   - dtz(k)*khdz(k+1)*rhoinv(k)
-         d(k)=sqc(k)-dtz(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k)) &
+         d(k)=sqc(k)-dtz(k)*rhoinv(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k)) &
              &  + det_sqc(k)*delt
       ENDDO
 
@@ -4559,14 +4559,14 @@ IF (bl_mynn_mixqt == 0) THEN
       b(1)=one + dtz(k)*khdz(k+1)*rhoinv(k)
       c(1)=    - dtz(k)*khdz(k+1)*rhoinv(k)
       d(1)=sqv(k)+dtz(k)*rhosfc*qvflux*rhoinv(k) + qcd(k)*delt            &
-          &    - dtz(k)*(upcont(k+1)+dncont(k+1))                         &
+          &    - dtz(k)*rhoinv(k)*(upcont(k+1)+dncont(k+1))                         &
           &    + sub_sqv(k)*delt + det_sqv(k)*delt
 
       DO k=kts+1,kte-1
          a(k)=   - dtz(k)*khdz(k)*rhoinv(k)
          b(k)=one+ dtz(k)*(khdz(k)+khdz(k+1))*rhoinv(k)
          c(k)=   - dtz(k)*khdz(k+1)*rhoinv(k)
-         d(k)=sqv(k)-dtz(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k)) &
+         d(k)=sqv(k)-dtz(k)*rhoinv(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k)) &
              &   + sub_sqv(k)*delt + det_sqv(k)*delt
       ENDDO
 
@@ -4654,13 +4654,13 @@ IF (bl_mynn_cloudmix > 0 .AND. FLAG_QI) THEN
       b(1)=one + dtz(k)*khdz(k+1)*rhoinv(k)
       c(1)=    - dtz(k)*khdz(k+1)*rhoinv(k)
       d(1)=sqi(k)                                         &
-          &    - dtz(k)*(upcont(k+1)+dncont(k+1))
+          &    - dtz(k)*rhoinv(k)*(upcont(k+1)+dncont(k+1))
 
       do k=kts+1,kte-1
          a(k)=   - dtz(k)*khdz(k)*rhoinv(k)
          b(k)=one+ dtz(k)*(khdz(k)+khdz(k+1))*rhoinv(k)
          c(k)=   - dtz(k)*khdz(k+1)*rhoinv(k)
-         d(k)=sqi(k)-dtz(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k))
+         d(k)=sqi(k)-dtz(k)*rhoinv(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k))
       enddo
 
    else !implicit
@@ -4788,13 +4788,13 @@ IF (bl_mynn_cloudmix > 0 .AND. FLAG_QNI .AND. &
       b(1)=one + dtz(k)*khdz(k+1)*rhoinv(k)
       c(1)=    - dtz(k)*khdz(k+1)*rhoinv(k)
       d(1)=qni2(k)                                       &
-          &    - dtz(k)*(upcont(k+1)+dncont(k+1))
+          &    - dtz(k)*rhoinv(k)*(upcont(k+1)+dncont(k+1))
 
       DO k=kts+1,kte-1
          a(k)=   - dtz(k)*khdz(k)*rhoinv(k)
          b(k)=one+ dtz(k)*(khdz(k)+khdz(k+1))*rhoinv(k)
          c(k)=   - dtz(k)*khdz(k+1)*rhoinv(k)
-         d(k)=qni2(k)-dtz(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k))
+         d(k)=qni2(k)-dtz(k)*rhoinv(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k))
       ENDDO
 
    else !implicit
@@ -4877,13 +4877,13 @@ IF (bl_mynn_cloudmix > 0 .AND. FLAG_QNC .AND. &
       b(1)=one + dtz(k)*khdz(k+1)*rhoinv(k)
       c(1)=    - dtz(k)*khdz(k+1)*rhoinv(k)
       d(1)=qnc2(k)                                       &
-          &    - dtz(k)*(upcont(k+1)+dncont(k+1))
+          &    - dtz(k)*rhoinv(k)*(upcont(k+1)+dncont(k+1))
 
       DO k=kts+1,kte-1
          a(k)=   - dtz(k)*khdz(k)*rhoinv(k)
          b(k)=one+ dtz(k)*(khdz(k)+khdz(k+1))*rhoinv(k)
          c(k)=   - dtz(k)*khdz(k+1)*rhoinv(k)
-         d(k)=qnc2(k)-dtz(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k))
+         d(k)=qnc2(k)-dtz(k)*rhoinv(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k))
       ENDDO
 
    else !implicit
@@ -4962,13 +4962,13 @@ IF (FLAG_QNWFA .AND. bl_mynn_mixaerosols > 0) THEN
       b(1)=one + dtz(k)*khdz(k+1)*rhoinv(k)
       c(1)=    - dtz(k)*khdz(k+1)*rhoinv(k)
       d(1)=qnwfa2(k)                                       &
-          &    - dtz(k)*(upcont(k+1)+dncont(k+1))
+          &    - dtz(k)*rhoinv(k)*(upcont(k+1)+dncont(k+1))
 
       DO k=kts+1,kte-1
          a(k)=   - dtz(k)*khdz(k)*rhoinv(k)
          b(k)=one+ dtz(k)*(khdz(k)+khdz(k+1))*rhoinv(k)
          c(k)=   - dtz(k)*khdz(k+1)*rhoinv(k)
-         d(k)=qnwfa2(k)-dtz(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k))
+         d(k)=qnwfa2(k)-dtz(k)*rhoinv(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k))
       ENDDO
 
    else !implicit
@@ -5058,13 +5058,13 @@ IF (FLAG_QNIFA .AND. bl_mynn_mixaerosols > 0) THEN
       b(1)=one + dtz(k)*khdz(k+1)*rhoinv(k)
       c(1)=    - dtz(k)*khdz(k+1)*rhoinv(k)
       d(1)=qnifa2(k)                                       &
-          &    - dtz(k)*(upcont(k+1)+dncont(k+1))
+          &    - dtz(k)*rhoinv(k)*(upcont(k+1)+dncont(k+1))
 
       DO k=kts+1,kte-1
          a(k)=   - dtz(k)*khdz(k)*rhoinv(k)
          b(k)=one+ dtz(k)*(khdz(k)+khdz(k+1))*rhoinv(k)
          c(k)=   - dtz(k)*khdz(k+1)*rhoinv(k)
-         d(k)=qnifa2(k)-dtz(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k))
+         d(k)=qnifa2(k)-dtz(k)*rhoinv(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k))
       ENDDO
 
    else !implicit
@@ -5144,13 +5144,13 @@ IF (FLAG_QNBCA .AND. bl_mynn_mixaerosols > 0) THEN
       b(1)=one + dtz(k)*khdz(k+1)*rhoinv(k)
       c(1)=    - dtz(k)*khdz(k+1)*rhoinv(k)
       d(1)=qnbca(k)                                       &
-          &    - dtz(k)*(upcont(k+1)+dncont(k+1))
+          &    - dtz(k)*rhoinv(k)*(upcont(k+1)+dncont(k+1))
 
       DO k=kts+1,kte-1
          a(k)=   - dtz(k)*khdz(k)*rhoinv(k)
          b(k)=one+ dtz(k)*(khdz(k)+khdz(k+1))*rhoinv(k)
          c(k)=   - dtz(k)*khdz(k+1)*rhoinv(k)
-         d(k)=qnbca(k)-dtz(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k))
+         d(k)=qnbca(k)-dtz(k)*rhoinv(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k))
       ENDDO
 
    else !implicit
@@ -5690,13 +5690,13 @@ DO ic = 1,nchem
       b(1)=one + dtz(k)*khdz(k+1)*rhoinv(k)
       c(1)=    - dtz(k)*khdz(k+1)*rhoinv(k)
       d(1)=chem1(k,ic)                                       &
-          &    - dtz(k)*(upcont(k+1)+dncont(k+1))
+          &    - dtz(k)*rhoinv(k)*(upcont(k+1)+dncont(k+1))
 
       DO k=kts+1,kte-1
          a(k)=   - dtz(k)*khdz(k)*rhoinv(k)
          b(k)=one+ dtz(k)*(khdz(k)+khdz(k+1))*rhoinv(k)
          c(k)=   - dtz(k)*khdz(k+1)*rhoinv(k)
-         d(k)=chem1(k,ic)-dtz(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k))
+         d(k)=chem1(k,ic)-dtz(k)*rhoinv(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k))
       ENDDO
 
    else !implicit
@@ -5819,13 +5819,13 @@ DO ns = 1,nscalars
       b(1)=one + dtz(k)*khdz(k+1)*rhoinv(k)
       c(1)=    - dtz(k)*khdz(k+1)*rhoinv(k)
       d(1)=scalars(k,ns)                                       &
-          &    - dtz(k)*(upcont(k+1)+dncont(k+1))
+          &    - dtz(k)*rhoinv(k)*(upcont(k+1)+dncont(k+1))
 
       DO k=kts+1,kte-1
          a(k)=   - dtz(k)*khdz(k)*rhoinv(k)
          b(k)=one+ dtz(k)*(khdz(k)+khdz(k+1))*rhoinv(k)
          c(k)=   - dtz(k)*khdz(k+1)*rhoinv(k)
-         d(k)=scalars(k,ns)-dtz(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k))
+         d(k)=scalars(k,ns)-dtz(k)*rhoinv(k)*(upcont(k+1)-upcont(k)+dncont(k+1)-dncont(k))
       ENDDO
 
    else !implicit 
