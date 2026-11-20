@@ -4094,12 +4094,12 @@ endif
     !stability criteria for implicit mf
     if (bl_mynn_edmf == 1) then
        DO k=kts+1,kte-1
-          khdz(k) = max(khdz(k),  p5*(s_aw1(k) +sd_aw1(k)))
+          khdz(k) = max(khdz(k),  p5*(s_aw1(k) +abs(sd_aw1(k))))
           khdz(k) = max(khdz(k), -p5*(s_aw1(k) -s_aw1(k+1))  &
-                                 -p5*(sd_aw1(k)-sd_aw1(k+1)) )
-          kmdz(k) = max(kmdz(k),  p5*(s_aw1(k) +sd_aw1(k)))
+                                 -p5*(abs(sd_aw1(k))-abs(sd_aw1(k+1))) )
+          kmdz(k) = max(kmdz(k),  p5*(s_aw1(k) +abs(sd_aw1(k))))
           kmdz(k) = max(kmdz(k), -p5*(s_aw1(k) -s_aw1(k+1))  &
-                                 -p5*(sd_aw1(k)-sd_aw1(k+1)) )
+                                 -p5*(abs(sd_aw1(k))-abs(sd_aw1(k+1))) )
        ENDDO
     endif
 
@@ -4112,7 +4112,7 @@ endif
 
     do k=kts+1,kte-1
        upcont(k)=onoff*(s_awu1(k) - s_aw1(k)*(u(k)*upwind+u(k-1)*(one-upwind)))
-       dncont(k)=onoff*(sd_awu1(k)-sd_aw1(k)*(u(k)*upwind+u(k-1)*(one-upwind)))
+       dncont(k)=onoff*(sd_awu1(k)-sd_aw1(k)*(u(k-1)*upwind+u(k)*(one-upwind)))
     enddo
     ! no flux at the top of the atmosphere
     upcont(kte)=zero
@@ -4147,7 +4147,7 @@ endif
            & - p5*dtz(k)*rhoinv(k)*sd_aw1(k+1)*onoff
     d(k)=u(k)  + dtz(k)*rhosfc*rhoinv(k)*uoce*ust*ustovwsp         &
            & - dtz(k)*rhoinv(k)*s_awu1(k+1)*onoff                  &
-           & + dtz(k)*rhoinv(k)*sd_awu1(k+1)*onoff                 &
+           & - dtz(k)*rhoinv(k)*sd_awu1(k+1)*onoff                 &
            & + sub_u(k)*delt + det_u(k)*delt
 
     do k=kts+1,kte-1
@@ -4161,7 +4161,7 @@ endif
            &  - p5*dtz(k)*rhoinv(k)*s_aw1(k+1)*onoff               &
            &  - p5*dtz(k)*rhoinv(k)*sd_aw1(k+1)*onoff
        d(k)=u(k) + dtz(k)*rhoinv(k)*(s_awu1(k)-s_awu1(k+1))*onoff  &
-           &  - dtz(k)*rhoinv(k)*(sd_awu1(k)-sd_awu1(k+1))*onoff   &
+           &  + dtz(k)*rhoinv(k)*(sd_awu1(k)-sd_awu1(k+1))*onoff   &
            &  + sub_u(k)*delt + det_u(k)*delt
     enddo
 
@@ -4202,7 +4202,7 @@ endif
 
     DO k=kts+1,kte-1
        upcont(k)=onoff*(s_awv1(k)-s_aw1(k)*(v(k)*upwind+v(k-1)*(one-upwind)))
-       dncont(k)=onoff*(sd_awv1(k)-sd_aw1(k)*(v(k)*upwind+v(k-1)*(one-upwind)))
+       dncont(k)=onoff*(sd_awv1(k)-sd_aw1(k)*(v(k-1)*upwind+v(k)*(one-upwind)))
     ENDDO
     ! no flux at the top of the atmosphere
     upcont(kte)=zero
@@ -4237,7 +4237,7 @@ endif
         &  - p5*dtz(k)*rhoinv(k)*sd_aw1(k+1)*onoff
     d(k)=v(k)  + dtz(k)*rhosfc*rhoinv(k)*voce*ust*ustovwsp        &
         &  - dtz(k)*rhoinv(k)*s_awv1(k+1)*onoff                   &
-        &  + dtz(k)*rhoinv(k)*sd_awv1(k+1)*onoff                  &
+        &  - dtz(k)*rhoinv(k)*sd_awv1(k+1)*onoff                  &
         &  + sub_v(k)*delt + det_v(k)*delt
 
     do k=kts+1,kte-1
@@ -4251,7 +4251,7 @@ endif
          & - p5*dtz(k)*rhoinv(k)*s_aw1(k+1)*onoff                 &
          & - p5*dtz(k)*rhoinv(k)*sd_aw1(k+1)*onoff
        d(k)=v(k) + dtz(k)*rhoinv(k)*(s_awv1(k)-s_awv1(k+1))*onoff &
-         & - dtz(k)*rhoinv(k)*(sd_awv1(k)-sd_awv1(k+1))*onoff     &
+         & + dtz(k)*rhoinv(k)*(sd_awv1(k)-sd_awv1(k+1))*onoff     &
          & + sub_v(k)*delt + det_v(k)*delt
     enddo
  endif
@@ -4289,7 +4289,7 @@ endif
 
     DO k=kts+1,kte-1
        upcont(k)= s_awthl1(k)- s_aw1(k)*(thl(k)*upwind+thl(k-1)*(one-upwind))
-       dncont(k)=sd_awthl1(k)-sd_aw1(k)*(thl(k)*upwind+thl(k-1)*(one-upwind))
+       dncont(k)=sd_awthl1(k)-sd_aw1(k)*(thl(k-1)*upwind+thl(k)*(one-upwind))
     ENDDO
     ! no flux at the top of the atmosphere
     upcont(kte)=zero
@@ -4326,7 +4326,7 @@ endif
     d(k)=thl(k) + dtz(k)*rhosfc*flt*rhoinv(k) + tcd(k)*delt  &
 !    d(k)=thl_tot1(k) + dtz(k)*rhosfc*flt*rhoinv(k) + tcd(k)*delt  &
        &   - dtz(k)*rhoinv(k)*s_awthl1(k+1)                  &
-       &   + dtz(k)*rhoinv(k)*sd_awthl1(k+1)                 &
+       &   - dtz(k)*rhoinv(k)*sd_awthl1(k+1)                 &
        &   + diss_heat(k)*delt + sub_thl(k)*delt + det_thl(k)*delt
 
     do k=kts+1,kte-1
@@ -4342,7 +4342,7 @@ endif
        d(k)=thl(k) + tcd(k)*delt                             &
 !       d(k)=thl_tot1(k) + tcd(k)*delt                             &
        &   + dtz(k)*rhoinv(k)*(s_awthl1(k)-s_awthl1(k+1))    &
-       &   - dtz(k)*rhoinv(k)*(sd_awthl1(k)-sd_awthl1(k+1))  &
+       &   + dtz(k)*rhoinv(k)*(sd_awthl1(k)-sd_awthl1(k+1))  &
        &   +     diss_heat(k)*delt                           &
        &   +     sub_thl(k)*delt + det_thl(k)*delt
     enddo
@@ -4386,7 +4386,7 @@ IF (bl_mynn_mixqt > 0) THEN
 
     DO k=kts+1,kte-1
        upcont(k)= s_awqt1(k)- s_aw1(k)*(sqw(k)*upwind+sqw(k-1)*(one-upwind))
-       dncont(k)=sd_awqt1(k)-sd_aw1(k)*(sqw(k)*upwind+sqw(k-1)*(one-upwind))
+       dncont(k)=sd_awqt1(k)-sd_aw1(k)*(sqw(k-1)*upwind+sqw(k)*(one-upwind))
     ENDDO
     ! no flux at the top of the atmosphere
     upcont(kte)=zero
@@ -4422,7 +4422,7 @@ IF (bl_mynn_mixqt > 0) THEN
        & - p5*dtz(k)*rhoinv(k)*sd_aw1(k+1)
     d(k)=sqw(k)  + dtz(k)*rhosfc*flq*rhoinv(k) + qcd(k)*delt &
        &  - dtz(k)*rhoinv(k)*s_awqt1(k+1)                 &
-       &  + dtz(k)*rhoinv(k)*sd_awqt1(k+1)
+       &  - dtz(k)*rhoinv(k)*sd_awqt1(k+1)
 
     do k=kts+1,kte-1
        a(k)=  -dtz(k)*khdz(k)*rhoinv(k)                   &
@@ -4436,7 +4436,7 @@ IF (bl_mynn_mixqt > 0) THEN
        & - p5*dtz(k)*rhoinv(k)*sd_aw1(k+1)
        d(k)=sqw(k) + qcd(k)*delt                          &
        & + dtz(k)*rhoinv(k)*(s_awqt1(k)-s_awqt1(k+1))     &
-       & - dtz(k)*rhoinv(k)*(sd_awqt1(k)-sd_awqt1(k+1))
+       & + dtz(k)*rhoinv(k)*(sd_awqt1(k)-sd_awqt1(k+1))
     enddo
 endif
 !! no flux at the top
@@ -4478,7 +4478,7 @@ IF (bl_mynn_mixqt == 0) THEN
 
       DO k=kts+1,kte-1
          upcont(k)= s_awqc1(k)- s_aw1(k)*(sqc(k)*upwind+sqc(k-1)*(one-upwind))
-         dncont(k)=sd_awqc1(k)-sd_aw1(k)*(sqc(k)*upwind+sqc(k-1)*(one-upwind))
+         dncont(k)=sd_awqc1(k)-sd_aw1(k)*(sqc(k-1)*upwind+sqc(k)*(one-upwind))
       ENDDO
       ! no flux at the top of the atmosphere
       upcont(kte)=zero
@@ -4514,7 +4514,7 @@ IF (bl_mynn_mixqt == 0) THEN
        &  - p5*dtz(k)*rhoinv(k)*sd_aw1(k+1)
        d(k)=sqc(k)  + dtz(k)*rhosfc*flqc*rhoinv(k) + qcd(k)*delt &
        &  - dtz(k)*rhoinv(k)*s_awqc1(k+1)                   &
-       &  + dtz(k)*rhoinv(k)*sd_awqc1(k+1)                  &
+       &  - dtz(k)*rhoinv(k)*sd_awqc1(k+1)                  &
        &  + det_sqc(k)*delt
 
        do k=kts+1,kte-1
@@ -4529,7 +4529,7 @@ IF (bl_mynn_mixqt == 0) THEN
           & - p5*dtz(k)*rhoinv(k)*sd_aw1(k+1)
           d(k)=sqc(k) + qcd(k)*delt                         &
           & + dtz(k)*rhoinv(k)*(s_awqc1(k)-s_awqc1(k+1))    &
-          & - dtz(k)*rhoinv(k)*(sd_awqc1(k)-sd_awqc1(k+1))  &
+          & + dtz(k)*rhoinv(k)*(sd_awqc1(k)-sd_awqc1(k+1))  &
           & + det_sqc(k)*delt
        enddo
     endif
@@ -4571,7 +4571,7 @@ IF (bl_mynn_mixqt == 0) THEN
 
       DO k=kts+1,kte-1
          upcont(k)= s_awqv1(k)- s_aw1(k)*(sqv(k)*upwind+sqv(k-1)*(one-upwind))
-         dncont(k)=sd_awqv1(k)-sd_aw1(k)*(sqv(k)*upwind+sqv(k-1)*(one-upwind))
+         dncont(k)=sd_awqv1(k)-sd_aw1(k)*(sqv(k-1)*upwind+sqv(k)*(one-upwind))
       ENDDO
       ! no flux at the top of the atmosphere
       upcont(kte)=zero
@@ -4607,7 +4607,7 @@ IF (bl_mynn_mixqt == 0) THEN
       & - p5*dtz(k)*rhoinv(k)*sd_aw1(k+1)
       d(k)=sqv(k)  + dtz(k)*rhosfc*qvflux*rhoinv(k) + qcd(k)*delt &
       & - dtz(k)*rhoinv(k)*s_awqv1(k+1)                    &
-      & + dtz(k)*rhoinv(k)*sd_awqv1(k+1)                   &
+      & - dtz(k)*rhoinv(k)*sd_awqv1(k+1)                   &
       & + sub_sqv(k)*delt + det_sqv(k)*delt
 
       do k=kts+1,kte-1
@@ -4622,7 +4622,7 @@ IF (bl_mynn_mixqt == 0) THEN
          & - p5*dtz(k)*rhoinv(k)*sd_aw1(k+1)
          d(k)=sqv(k) + qcd(k)*delt                         &
          & + dtz(k)*rhoinv(k)*(s_awqv1(k)-s_awqv1(k+1))    &
-         & - dtz(k)*rhoinv(k)*(sd_awqv1(k)-sd_awqv1(k+1))  &
+         & + dtz(k)*rhoinv(k)*(sd_awqv1(k)-sd_awqv1(k+1))  &
          & + sub_sqv(k)*delt + det_sqv(k)*delt
       enddo
    endif
@@ -4666,7 +4666,7 @@ IF (bl_mynn_cloudmix > 0 .AND. FLAG_QI) THEN
 
       do k=kts+1,kte-1
          upcont(k)= s_awqi1(k)- s_aw1(k)*(sqi(k)*upwind+sqi(k-1)*(one-upwind))
-         dncont(k)=sd_awqi1(k)-sd_aw1(k)*(sqi(k)*upwind+sqi(k-1)*(one-upwind))
+         dncont(k)=sd_awqi1(k)-sd_aw1(k)*(sqi(k-1)*upwind+sqi(k)*(one-upwind))
       enddo
       ! no flux at the top of the atmosphere
       upcont(kte)=zero
@@ -4699,7 +4699,7 @@ IF (bl_mynn_cloudmix > 0 .AND. FLAG_QI) THEN
       &  - p5*dtz(k)*rhoinv(k)*sd_aw1(k+1)
       d(k)=sqi(k)                                        &
       &  - dtz(k)*rhoinv(k)*s_awqi1(k+1)                 &
-      &  + dtz(k)*rhoinv(k)*sd_awqi1(k+1)
+      &  - dtz(k)*rhoinv(k)*sd_awqi1(k+1)
 
       do k=kts+1,kte-1
          a(k)=  -dtz(k)*khdz(k)*rhoinv(k)                &
@@ -4713,7 +4713,7 @@ IF (bl_mynn_cloudmix > 0 .AND. FLAG_QI) THEN
          & - p5*dtz(k)*rhoinv(k)*sd_aw1(k+1)
          d(k)=sqi(k)                                     &
          & + dtz(k)*rhoinv(k)*(s_awqi1(k)-s_awqi1(k+1))  &
-         & - dtz(k)*rhoinv(k)*(sd_awqi1(k)-sd_awqi1(k+1))
+         & + dtz(k)*rhoinv(k)*(sd_awqi1(k)-sd_awqi1(k+1))
       enddo
    endif
 
@@ -4800,7 +4800,7 @@ IF (bl_mynn_cloudmix > 0 .AND. FLAG_QNI .AND. &
 
       DO k=kts+1,kte-1
          upcont(k)= s_awqni1(k)- s_aw1(k)*(qni2(k)*upwind+qni2(k-1)*(one-upwind))
-         dncont(k)=sd_awqni1(k)-sd_aw1(k)*(qni2(k)*upwind+qni2(k-1)*(one-upwind))
+         dncont(k)=sd_awqni1(k)-sd_aw1(k)*(qni2(k-1)*upwind+qni2(k)*(one-upwind))
       ENDDO
       ! no flux at the top of the atmosphere
       upcont(kte)=zero
@@ -4833,7 +4833,7 @@ IF (bl_mynn_cloudmix > 0 .AND. FLAG_QNI .AND. &
       &  - p5*dtz(k)*rhoinv(k)*sd_aw1(k+1)
       d(k)=qni2(k)                                         &
       &  - dtz(k)*rhoinv(k)*s_awqni1(k+1)                  &
-      &  + dtz(k)*rhoinv(k)*sd_awqni1(k+1)
+      &  - dtz(k)*rhoinv(k)*sd_awqni1(k+1)
 
       do k=kts+1,kte-1
          a(k)=  -dtz(k)*khdz(k)*rhoinv(k)                  &
@@ -4847,7 +4847,7 @@ IF (bl_mynn_cloudmix > 0 .AND. FLAG_QNI .AND. &
          & - p5*dtz(k)*rhoinv(k)*sd_aw1(k+1)
          d(k)=qni2(k)                                      &
          & + dtz(k)*rhoinv(k)*(s_awqni1(k)-s_awqni1(k+1))  &
-         & - dtz(k)*rhoinv(k)*(sd_awqni1(k)-sd_awqni1(k+1))
+         & + dtz(k)*rhoinv(k)*(sd_awqni1(k)-sd_awqni1(k+1))
       enddo
    endif
    
@@ -4889,7 +4889,7 @@ IF (bl_mynn_cloudmix > 0 .AND. FLAG_QNC .AND. &
 
       DO k=kts+1,kte-1
          upcont(k)= s_awqnc1(k)- s_aw1(k)*(qnc2(k)*upwind+qnc2(k-1)*(one-upwind))
-         dncont(k)=sd_awqnc1(k)-sd_aw1(k)*(qnc2(k)*upwind+qnc2(k-1)*(one-upwind))
+         dncont(k)=sd_awqnc1(k)-sd_aw1(k)*(qnc2(k-1)*upwind+qnc2(k)*(one-upwind))
       ENDDO
       ! no flux at the top of the atmosphere
       upcont(kte)=zero
@@ -4922,7 +4922,7 @@ IF (bl_mynn_cloudmix > 0 .AND. FLAG_QNC .AND. &
       &  - p5*dtz(k)*rhoinv(k)*sd_aw1(k+1)
       d(k)=qnc2(k)                                         &
       &  - dtz(k)*rhoinv(k)*s_awqnc1(k+1)                  &
-      &  + dtz(k)*rhoinv(k)*sd_awqnc1(k+1)
+      &  - dtz(k)*rhoinv(k)*sd_awqnc1(k+1)
 
       do k=kts+1,kte-1
          a(k)=  -dtz(k)*khdz(k)*rhoinv(k)                  &
@@ -4936,7 +4936,7 @@ IF (bl_mynn_cloudmix > 0 .AND. FLAG_QNC .AND. &
          & - p5*dtz(k)*rhoinv(k)*sd_aw1(k+1)
          d(k)=qnc2(k)                                      &
          & + dtz(k)*rhoinv(k)*(s_awqnc1(k)-s_awqnc1(k+1))  &
-         & - dtz(k)*rhoinv(k)*(sd_awqnc1(k)-sd_awqnc1(k+1))
+         & + dtz(k)*rhoinv(k)*(sd_awqnc1(k)-sd_awqnc1(k+1))
       enddo
    endif
 
@@ -4974,7 +4974,7 @@ IF (FLAG_QNWFA .AND. bl_mynn_mixaerosols > 0) THEN
 
       DO k=kts+1,kte-1
          upcont(k)= s_awqnwfa1(k)- s_aw1(k)*(qnwfa2(k)*upwind+qnwfa2(k-1)*(one-upwind))
-         dncont(k)=sd_awqnwfa1(k)-sd_aw1(k)*(qnwfa2(k)*upwind+qnwfa2(k-1)*(one-upwind))
+         dncont(k)=sd_awqnwfa1(k)-sd_aw1(k)*(qnwfa2(k-1)*upwind+qnwfa2(k)*(one-upwind))
       ENDDO
       ! no flux at the top of the atmosphere
       upcont(kte)=zero
@@ -5007,7 +5007,7 @@ IF (FLAG_QNWFA .AND. bl_mynn_mixaerosols > 0) THEN
       &  - p5*dtz(k)*rhoinv(k)*sd_aw1(k+1)
       d(k)=qnwfa2(k)                                           &
       &  - dtz(k)*rhoinv(k)*s_awqnwfa1(k+1)                    &
-      &  + dtz(k)*rhoinv(k)*sd_awqnwfa1(k+1)
+      &  - dtz(k)*rhoinv(k)*sd_awqnwfa1(k+1)
 
       do k=kts+1,kte-1
          a(k)=  -dtz(k)*khdz(k)*rhoinv(k)                      &
@@ -5021,7 +5021,7 @@ IF (FLAG_QNWFA .AND. bl_mynn_mixaerosols > 0) THEN
          & - p5*dtz(k)*rhoinv(k)*sd_aw1(k+1)
          d(k)=qnwfa2(k)                                        &
          & + dtz(k)*rhoinv(k)*(s_awqnwfa1(k)-s_awqnwfa1(k+1))  &
-         & - dtz(k)*rhoinv(k)*(sd_awqnwfa1(k)-sd_awqnwfa1(k+1))
+         & + dtz(k)*rhoinv(k)*(sd_awqnwfa1(k)-sd_awqnwfa1(k+1))
       enddo
    endif
       
@@ -5071,7 +5071,7 @@ IF (FLAG_QNIFA .AND. bl_mynn_mixaerosols > 0) THEN
 
       DO k=kts+1,kte-1
          upcont(k)= s_awqnifa1(k)- s_aw1(k)*(qnifa2(k)*upwind+qnifa2(k-1)*(one-upwind))
-         dncont(k)=sd_awqnifa1(k)-sd_aw1(k)*(qnifa2(k)*upwind+qnifa2(k-1)*(one-upwind))
+         dncont(k)=sd_awqnifa1(k)-sd_aw1(k)*(qnifa2(k-1)*upwind+qnifa2(k)*(one-upwind))
       ENDDO
       ! no flux at the top of the atmosphere
       upcont(kte)=zero
@@ -5103,7 +5103,7 @@ IF (FLAG_QNIFA .AND. bl_mynn_mixaerosols > 0) THEN
       &  - p5*dtz(k)*rhoinv(k)*sd_aw1(k+1)
       d(k)=qnifa2(k)                                           &
       &  - dtz(k)*rhoinv(k)*s_awqnifa1(k+1)                    &
-      &  + dtz(k)*rhoinv(k)*sd_awqnifa1(k+1)
+      &  - dtz(k)*rhoinv(k)*sd_awqnifa1(k+1)
 
       do k=kts+1,kte-1
          a(k)=  -dtz(k)*khdz(k)*rhoinv(k)                      &
@@ -5117,7 +5117,7 @@ IF (FLAG_QNIFA .AND. bl_mynn_mixaerosols > 0) THEN
          & - p5*dtz(k)*rhoinv(k)*sd_aw1(k+1)
          d(k)=qnifa2(k)                                        &
          & + dtz(k)*rhoinv(k)*(s_awqnifa1(k)-s_awqnifa1(k+1))  &
-         & - dtz(k)*rhoinv(k)*(sd_awqnifa1(k)-sd_awqnifa1(k+1))
+         & + dtz(k)*rhoinv(k)*(sd_awqnifa1(k)-sd_awqnifa1(k+1))
       enddo
    endif
    
@@ -8320,7 +8320,7 @@ subroutine ddmp_mf(kts,kte,dt,dx,zw,dz,p,delp,       &
       do k=kts,qltop
          rho_int = (rho(k)*dz(k+1)+rho(k+1)*dz(k))/(dz(k+1)+dz(k))
          do i=1,ndd
-            sd_aw(k)   =sd_aw(k)   +rho_int*downa(k,i)*abs(downw(k,i))
+            sd_aw(k)   =sd_aw(k)   +rho_int*downa(k,i)*downw(k,i)
             sd_awthl(k)=sd_awthl(k)+rho_int*downa(k,i)*downw(k,i)*downthl(k,i)
             sd_awqt(k) =sd_awqt(k) +rho_int*downa(k,i)*downw(k,i)*downqt(k,i)
             sd_awqc(k) =sd_awqc(k) +rho_int*downa(k,i)*downw(k,i)*downqc(k,i)
