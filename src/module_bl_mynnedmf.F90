@@ -1477,7 +1477,7 @@ contains
        !destabilizes the lapse rates in grid cells with tke/mf/clouds by adding
        !a negative eqiv potential temperature gradient proportional to the
        !turbulence and cloud fractions. The coefficient for lambda (clam) has
-       !units of s/m (i.e., eddy timescale / pbl depth ~ 1.0 to 1.8), but needs to be
+       !should be approximately eddy timescale / pbl depth ~ 1.0 to 1.8), but needs to be
        !limited over land as noted below.
        !--------------------------------
        !taper ess for hurricane conditions
@@ -1488,7 +1488,7 @@ contains
           !clam0 = 1.8_kind_phys * taper
           clam0 = 1.3_kind_phys * taper
        else                          !land
-          !since the MF and TKE are much large over land and pblhs are much deeper,
+          !since the MF and TKE are much larger over land and pblhs are much deeper,
           !we need a smaller tuning constant for land.
           clam0 = 0.4_kind_phys
        endif
@@ -1503,7 +1503,8 @@ contains
           dqz   = ( qw(k) -qw(k-1)  ) / dzk
 
           !blend clam to free tropospheric value (0.5) above the pblh
-          wt    = min(one, max(zero, zw(k)-(pblh+max(300._kind_phys,p3*pblh)))/max(400._kind_phys, p3*pblh)) !0 below pblh, 1 above pblh
+          wt    = min(one, max(zero, zw(k)-(pblh+max(300._kind_phys,p3*pblh)))/ &
+                  max(400._kind_phys, p3*pblh)) !0 below pblh, 1 above pblh
           clam  = clam0*(one-wt) + p5*wt
           !choke of clam in Ekman layer
           ekl   = max(hundred,pblh*p25)
@@ -1512,7 +1513,7 @@ contains
           !Use a blended subgrid-cloud-included theta-v and theta-l-v for background
           !thermodynamic profile:
           dthv  = thv(k) - thv(k-1)
-          !Then use the equivalent potential pemerature profile to adjust the sbability in partially
+          !Then use the equivalent potential temerature profile to adjust the stability in partially
           !saturated conditions with an upwards vertical component.
           !equivalent saturated potential temperature at k
           tabs  = th(k)*exner(k)
