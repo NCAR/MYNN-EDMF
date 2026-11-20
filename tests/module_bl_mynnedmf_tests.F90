@@ -480,6 +480,9 @@ module module_bl_mynnedmf_tests
             status = nf90_get_var(ncid, varid, w_loc(1,:,1), &
                                   start=[1,1,1,t], count=[1,1,nz,1])
 
+            status = nf90_inq_varid(ncid, "RTHRATEN", varid)
+            status = nf90_get_var(ncid, varid, rthraten_loc(1,:,1), &
+                                  start=[1,1,1,t], count=[1,1,nz,1])
 
             status = nf90_inq_varid(ncid, "TK", varid)
             status = nf90_get_var(ncid, varid, t3d_loc(1,:,1), &
@@ -489,12 +492,13 @@ module module_bl_mynnedmf_tests
             status = nf90_get_var(ncid, varid, p_loc(1,:,1), &
                  start=[1,1,1,t], count=[1,1,nz,1])
 
-            !calculate p on interfaces:
+            !calculate p on interfaces: the mean of the two neighbouring
+            !layer pressures, extrapolated half a layer at the top
             pint(:,1,:) = ps
             do k=kts+1,nz
-               pint(:,k,:) = p_loc(:,k,:) - p_loc(:,k+1,:)
+               pint(:,k,:) = 0.5*(p_loc(:,k-1,:) + p_loc(:,k,:))
             enddo
-            pint(:,kme,:) = pint(:,kme-1,:)-1.
+            pint(:,kme,:) = max(1., p_loc(:,nz,:) - 0.5*(p_loc(:,nz-1,:) - p_loc(:,nz,:)))
 
             status = nf90_inq_varid(ncid, "EXNER", varid)
             status = nf90_get_var(ncid, varid, exner_loc(1,:,1), &
@@ -502,7 +506,7 @@ module module_bl_mynnedmf_tests
 
             status = nf90_inq_varid(ncid, "RHO", varid)
             status = nf90_get_var(ncid, varid, rho_loc(1,:,1), &
-                                  start=[1,1,1,t+1], count=[1,1,nz,1])
+                                  start=[1,1,1,t], count=[1,1,nz,1])
 
             status = nf90_inq_varid(ncid, "EXCH_H_mass", varid)
             status = nf90_get_var(ncid, varid, exch_h_loc(1,:,1), &

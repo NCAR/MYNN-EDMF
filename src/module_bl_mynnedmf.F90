@@ -8705,6 +8705,9 @@ end function phih
     minrad         = zero
     kminrad        = kpbl
     zminrad        = pblh
+    !the profiles are filled only up to kminrad+3, but normalized over the column
+    zfac           = zero
+    zfacent        = zero
     !save the tke production from the downdraft scheme for comparison
     tkeprodorig(kts:kte)=tkeprod_dn(kts:kte)
     
