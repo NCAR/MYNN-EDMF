@@ -6407,7 +6407,7 @@ END SUBROUTINE GET_PBLH
  real(kind_phys)::  d     != -2.3 to -1.7  ;=-1.9 in Neggers paper; power law exponent for number density (N=Cl^d).
       ! Note that changing d to -2.0 makes each size plume equally contribute to the total coverage of all plumes.
       ! Note that changing d to -1.7 doubles the area coverage of the largest plumes relative to the smallest plumes.
- real(kind_phys):: cn,c,l,n,an2,hux,wspd_pbl,cloud_base,           &
+ real(kind_phys):: cn,c,l,n,an2,hux,hux2,wspd_pbl,cloud_base,      &
       maxwidth_dx,maxwidth_pbl,maxwidth_cld,maxwidth_flx
 
  ! chem/smoke
@@ -6563,12 +6563,6 @@ END SUBROUTINE GET_PBLH
  nup2     = nup !start with nup, but set to zero if activation criteria fails
  tkeprod_up = zero
 
- if (debug_mf == 1 .and. i==idbg .and. j==jdbg) then
-    print*,"===incoming forcing in mf component:"
-    print*,"  flt=",flt," fltv=",fltv
-    print*,"  Psig_shcu=",Psig_shcu," wspd=",sqrt(max(u1(kts)**2 + v1(kts)**2, 0.01_kind_phys))
- endif
-      
  ! Taper off MF scheme when significant resolved-scale motions
  ! are present This function needs to be asymetric...
  maxw        = zero
@@ -6606,37 +6600,29 @@ END SUBROUTINE GET_PBLH
  fltv2 = fltv
  if (Psig_w < 1e-2_kind_phys .and. fltv > zero) fltv2 = -1.*fltv
 
- if (debug_mf == 1 .and. i==idbg .and. j==jdbg) then
-    print*,"===criteria for small w in pbl:"
-    print*,"maxw=",maxw," Psig_w=",Psig_w," k50=",k50
- endif
-      
  ! If surface buoyancy is positive we do integration, otherwise no.
  ! Also, ensure that it is at least slightly superadiabatic up through 50 m
  superadiabatic = .false.
  if ((landsea-1.5).ge.zero) then
-    hux = -0.0024  ! WATER   ! dTHv/dz must be < -0.24 K per 100 m.
+    hux = -0.0012_kind_phys  ! WATER ! dTHv/dz must be < -0.12 K per 100 m.
  else
-    hux = -0.0030  ! LAND    ! dTHv/dz must be < -0.30 K per 100 m.
+    hux = -0.0030_kind_phys  ! LAND  ! dTHv/dz must be < -0.30 K per 100 m.
  endif
+ hux2 = hux !set for debug prints
  tvs    = ts*(one+p608*qv1(kts))
  if ((thv1(kts)-tvs)/(p5*dz1(kts)) < hux) then
     !if superadiabatic at the surface, continue checking all layers below 50 m:
     superadiabatic = .true.
     do k=2,max(2,k50)
-       hux = -0.0018  !allow for smaller superadiabatic layers above the surface
+       hux2 = min(-0.0001_kind_phys, hux + 0.00003_kind_phys*zagl1(k))  !allow for smaller superadiabatic layers above the surface
        dthvdz = (thv1(k)-thv1(k-1))/(p5*(dz1(k)+dz1(k-1)))
-       if (dthvdz < hux) then
+       if (dthvdz < hux2) then
           superadiabatic = .true.
        else
           superadiabatic = .false.
           exit
        endif
     enddo
- endif
-
- if (debug_mf == 1 .and. i==idbg .and. j==jdbg) then
-    print*," superadiatic=",superadiabatic," hux=",hux
  endif
 
  ! Determine the numer of updrafts/plumes in the grid column:
@@ -6672,15 +6658,23 @@ END SUBROUTINE GET_PBLH
  maxwidth = MIN(maxwidth,    maxwidth_flx)      
  minwidth = lmin
 
- if (debug_mf == 1 .and. i==idbg .and. j==jdbg) then  !land
-    print*,"===limiting factors on plume width:"
+ !if (debug_mf == 1 .and. i==idbg .and. j==jdbg) then  !land
+ if (debug_mf == 1 .and. (landsea-1.5).ge.zero) then !water
+    print*,"===limiting factors on plume width and activation:"
     print*,"maxwidth_dx= ",maxwidth_dx," dx=",dx
     print*,"maxwidth_pbl=",maxwidth_pbl," pblh=",pblh
     print*,"maxwidth_cld=",maxwidth_cld," cldbase=",cloud_base
     print*,"maxwidth_flx=",maxwidth_flx," fltv=",fltv
-    print*,"===final check for activation criteria:"
-    print*,"fltv2=",fltv2," superadiatic=",superadiabatic
     print*,"maxwidth=",maxwidth," minwidth=",minwidth
+    print*,"--check for activation criteria for surface fluxes:"
+    print*,"fltv2=",fltv2," flt=",flt," fltv=",fltv
+    print*,"--superadiabatic check:",superadiabatic
+    print*," grad(k=1):",(thv1(kts)-tvs)/(p5*dz1(kts))," hux=",hux
+    print*," grad(k=2):",(thv1(kts+1)-thv1(kts))/(p5*(dz1(kts)+dz1(kts+1)))," hux2=",hux2
+    print*,"--criteria for small w in pbl:"
+    print*,"maxw=",maxw," Psig_w=",Psig_w," k50=",k50
+    print*,"Psig_shcu=",Psig_shcu," wspd=",sqrt(max(u1(kts)**2 + v1(kts)**2, 0.01_kind_phys))
+    print*
  endif
 
  if (maxwidth .le. minwidth) then ! deactivate MF component
