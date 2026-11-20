@@ -911,7 +911,6 @@ contains
             &edmf_w1,edmf_a1,                            &
             &edmf_w_dd1,edmf_a_dd1,                      &
             &TKEprod_dn,TKEprod_up,                      &
-!test ess
             &Ndry,Nmoist,                                &
             &spp_pbl,pattern_spp_pbl1                    )
 
@@ -1044,7 +1043,7 @@ contains
 
     !update updraft/downdraft properties
     if (bl_mynn_diags3d > 0) then !research mode == 1 or 2
-!test ess
+       !replace detrainment output with static stability
        det_sqv1(kts:kte)   = Ndry(kts:kte)
        det_thl1(kts:kte)   = Nmoist(kts:kte)
        !if mode 2, then overwrite updrafts with downdrafts
@@ -2469,7 +2468,6 @@ contains
     &            edmf_w1,edmf_a1,                             &
     &            edmf_w_dd1,edmf_a_dd1,                       &
     &            TKEprod_dn,TKEprod_up,                       &
-!test ess
     &            Ndry,Nmoist,                                 &
     &            spp_pbl,pattern_spp_pbl1                     )
 
