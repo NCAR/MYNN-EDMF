@@ -1830,7 +1830,7 @@ contains
            alp3z  = cpblh * alp3
 
            !   **  Length scale limited by the buoyancy effect  **
-           bv     = sqrt(gtr * max(0.001_kind_phys, dtv(k))) 
+           bv     = sqrt(gtr * max(0.0005_kind_phys, dtv(k))) 
            elb_mf = alp6*qkw_mf/bv
            elb_mf = elb_mf / (one + (elb_mf/100._kind_phys))
            elb    = alp2*(max(qkw(k),qkw_elb_min))/bv    &
@@ -6692,6 +6692,7 @@ END SUBROUTINE GET_PBLH
 
     if (env_subs) then
        exc_fac = zero
+       csigmaq = csigma
     else
        if ((landsea-1.5).GE.zero) then
           !water: increase factor to compensate for decreased pwmin/pwmax
